@@ -1,0 +1,48 @@
+name: CI - Validate and Test
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  validate-and-test:
+    name: Validation, Tests and Packaging
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python for the tests
+        if: ${{ hashFiles('tests/requirements.txt') != '' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install the Python packages of the tests
+        if: ${{ hashFiles('tests/requirements.txt') != '' }}
+        shell: powershell
+        run: python -m pip install --quiet -r tests/requirements.txt
+
+      - name: Validate the files that ship
+        shell: powershell
+        run: ./build.ps1 -ValidateOnly
+
+      - name: Run the Pester tests
+        shell: powershell
+        run: ./tests/Run-Tests.ps1 -CI -OutputFile tests/test-results.xml
+
+      - name: Package and check what ships
+        shell: powershell
+        run: ./build.ps1 -Package -NoValidate
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: tests/test-results.xml
+          retention-days: 14

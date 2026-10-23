@@ -1,0 +1,119 @@
+GER_rksplus_rt56_colonial_category = {
+
+	# Suppress RT56 generic colonial single-tag releases in favor of RK+ modular boards
+	GER_reichskommissariat_mittelafrika = {
+		visible = {
+			always = no
+		}
+	}
+
+	GER_reichskommissariat_nordafrika = {
+		visible = {
+			always = no
+		}
+	}
+
+	GER_reichskommissariat_hindustan = {
+		visible = {
+			always = no
+		}
+	}
+
+	GER_reichskommissariat_arabien = {
+		visible = {
+			always = no
+		}
+	}
+
+	GER_reichskommissariat_ostasien = {
+		visible = {
+			always = no
+		}
+	}
+
+	GER_reichskommissariat_australasien = {
+		visible = {
+			always = no
+		}
+	}
+
+	# Tier 3 Colonial Administrative Directives
+	GER_rksplus_colonial_reorganization_africa = {
+		icon = ger_reichskommissariats
+
+		available = {
+			has_completed_focus = GER_mittelafrika
+			rkplus_ger_can_run_rks = yes
+			any_controlled_state = {
+				is_on_continent = africa
+			}
+		}
+
+		visible = {
+			has_completed_focus = GER_mittelafrika
+			rkplus_ger_can_run_rks = yes
+			NOT = { has_country_flag = GER_rksplus_colonial_africa_organized }
+		}
+
+		fire_only_once = yes
+		cost = 50
+
+		complete_effect = {
+			set_country_flag = GER_rksplus_colonial_africa_organized
+			add_stability = 0.05
+			add_war_support = 0.05
+			every_controlled_state = {
+				limit = {
+					is_on_continent = africa
+					NOT = { is_core_of = ROOT }
+				}
+				add_compliance = 15
+			}
+			custom_effect_tooltip = GER_rksplus_colonial_africa_organized_tt
+		}
+
+		ai_will_do = {
+			base = 50
+		}
+	}
+
+	GER_rksplus_colonial_reorganization_asia = {
+		icon = ger_reichskommissariats
+
+		available = {
+			has_completed_focus = GER_create_asian_reichskommissariat
+			rkplus_ger_can_run_rks = yes
+			any_controlled_state = {
+				is_on_continent = asia
+			}
+		}
+
+		visible = {
+			has_completed_focus = GER_create_asian_reichskommissariat
+			rkplus_ger_can_run_rks = yes
+			NOT = { has_country_flag = GER_rksplus_colonial_asia_organized }
+		}
+
+		fire_only_once = yes
+		cost = 50
+
+		complete_effect = {
+			set_country_flag = GER_rksplus_colonial_asia_organized
+			add_stability = 0.05
+			add_war_support = 0.05
+			every_controlled_state = {
+				limit = {
+					is_on_continent = asia
+					NOT = { is_core_of = ROOT }
+				}
+				add_compliance = 15
+			}
+			custom_effect_tooltip = GER_rksplus_colonial_asia_organized_tt
+		}
+
+		ai_will_do = {
+			base = 50
+		}
+	}
+}
+

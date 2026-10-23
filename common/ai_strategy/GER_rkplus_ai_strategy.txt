@@ -1,0 +1,125 @@
+GER_rkplus_form_belgium = {
+	allowed = {
+		original_tag = GER
+	}
+	enable = {
+		rkplus_ger_can_run_rks = yes
+		OR = {
+			has_completed_focus = GER_uplift_the_rosenberg_office
+			has_country_flag = GER_rksplus_startup_event_enable
+		}
+		6 = { is_controlled_by_ROOT_or_subject = yes }
+		34 = { is_controlled_by_ROOT_or_subject = yes }
+		980 = { is_controlled_by_ROOT_or_subject = yes }
+		977 = { is_controlled_by_ROOT_or_subject = yes }
+		RBG = { exists = no }
+	}
+	abort = {
+		RBG = { exists = yes }
+	}
+
+	ai_strategy = {
+		type = befriend
+		id = RBG
+		value = 100
+	}
+}
+
+GER_rkplus_form_netherlands = {
+	allowed = {
+		original_tag = GER
+	}
+	enable = {
+		rkplus_ger_can_run_rks = yes
+		OR = {
+			has_completed_focus = GER_uplift_the_rosenberg_office
+			has_country_flag = GER_rksplus_startup_event_enable
+		}
+		HOL = { has_capitulated = yes }
+		RNT = { exists = no }
+	}
+	abort = {
+		RNT = { exists = yes }
+	}
+
+	ai_strategy = {
+		type = befriend
+		id = RNT
+		value = 100
+	}
+}
+
+GER_rkplus_form_norway = {
+	allowed = {
+		original_tag = GER
+	}
+	enable = {
+		rkplus_ger_can_run_rks = yes
+		OR = {
+			has_completed_focus = GER_uplift_the_rosenberg_office
+			has_country_flag = GER_rksplus_startup_event_enable
+		}
+		NOR = { has_capitulated = yes }
+		RNW = { exists = no }
+	}
+	abort = {
+		RNW = { exists = yes }
+	}
+
+	ai_strategy = {
+		type = befriend
+		id = RNW
+		value = 100
+	}
+}
+
+GER_rkplus_form_ostland = {
+	allowed = {
+		original_tag = GER
+	}
+	enable = {
+		rkplus_ger_can_run_rks = yes
+		OR = {
+			has_completed_focus = GER_uplift_the_rosenberg_office
+			has_country_flag = GER_rksplus_startup_event_enable
+		}
+		189 = { is_controlled_by_ROOT_or_subject = yes }
+		190 = { is_controlled_by_ROOT_or_subject = yes }
+		ROT = { exists = no }
+	}
+	abort = {
+		ROT = { exists = yes }
+	}
+
+	ai_strategy = {
+		type = befriend
+		id = ROT
+		value = 100
+	}
+}
+
+GER_rkplus_form_ukraine = {
+	allowed = {
+		original_tag = GER
+	}
+	enable = {
+		rkplus_ger_can_run_rks = yes
+		OR = {
+			has_completed_focus = GER_uplift_the_rosenberg_office
+			has_country_flag = GER_rksplus_startup_event_enable
+		}
+		202 = { is_controlled_by_ROOT_or_subject = yes }
+		203 = { is_controlled_by_ROOT_or_subject = yes }
+		RUA = { exists = no }
+	}
+	abort = {
+		RUA = { exists = yes }
+	}
+
+	ai_strategy = {
+		type = befriend
+		id = RUA
+		value = 100
+	}
+}
+

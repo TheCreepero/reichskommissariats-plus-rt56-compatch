@@ -1,0 +1,6 @@
+rkplus_ger_can_run_rks = {
+	OR = {
+		has_government = fascism
+		has_government = neutrality
+	}
+}

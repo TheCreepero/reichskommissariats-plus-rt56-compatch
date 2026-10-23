@@ -1,0 +1,24 @@
+GER_rkplus_historical_plan = {
+	name = "German RK+ Historical Strategy Plan"
+	desc = "Guides German AI to establish Reichskommissariats historically to optimize garrison manpower"
+
+	allowed = {
+		original_tag = GER
+	}
+	enable = {
+		rkplus_ger_can_run_rks = yes
+		is_subject = no
+		is_historical_focus_on = yes
+	}
+	abort = {
+		is_subject = yes
+		NOT = { rkplus_ger_can_run_rks = yes }
+	}
+
+	ai_strategy = {
+		type = pp_spend_priority
+		id = decision
+		value = 100
+	}
+}
+
