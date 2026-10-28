@@ -10,5 +10,6 @@ dependencies={
 	"The Road to 56"
 	"RT56 - VNR - UTT Standalone v14"
 	"RT56 - VNR - UTT Standalone v15"
+	"RT56 - VNR - UTT Standalone v16"
 	"Reichskommissariats Plus"
 }
