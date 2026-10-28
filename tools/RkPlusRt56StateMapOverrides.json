@@ -1,0 +1,6 @@
+{
+"overrides": [
+{"id":291,"targets":[291,1046,1047],"reason":"Road to 56's Dulaim (1047) is 2 provinces of Baghdad, 2 of Al Anbar and 1 of Mosul and goes to Al Anbar, which holds Ramadi; Baghdad takes it too, so RK+ lists of Baghdad and Mosul without Al Anbar (the Shocker world focus) still reach it"},
+{"id":948,"targets":[1074],"reason":"Road to 56 draws Easter Island about 300 px from the game's island (province 13418 at 1113,1822 against 13294 at 1392,1702), so no province lines up; its state 1074 Easter Island is the same island"}
+]
+}

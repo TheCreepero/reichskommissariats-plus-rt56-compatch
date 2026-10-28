@@ -1,0 +1,192 @@
+### search_filters = {FOCUS_FILTER_POLITICAL}
+### search_filters = {FOCUS_FILTER_RESEARCH}
+### search_filters = {FOCUS_FILTER_INDUSTRY}
+### search_filters = {FOCUS_FILTER_STABILITY}
+### search_filters = {FOCUS_FILTER_WAR_SUPPORT}
+### search_filters = {FOCUS_FILTER_MANPOWER}
+### search_filters = {FOCUS_FILTER_ANNEXATION}
+
+focus_tree = {
+	id = rksburgundy_tree
+	
+	country = {
+		factor = 0
+		modifier = {
+			add = 10
+			tag = ROB
+		}
+	}
+
+	default = no
+
+	continuous_focus_position = { x = 20 y = 1250 }  
+	initial_show_position = {
+		x = 12
+		y = 0
+	}
+
+	focus = {
+		id = ROB_establishing_order
+		icon = GFX_goal_generic_political_pressure
+		#prerequisite = { focus = }
+
+		x = 5
+		y = 0
+		#relative_position_id = 
+		cost = 3
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+		    add_stability = 0.15
+			add_political_power = 50
+			
+			swap_ideas = {
+				add_idea = ROB_germanrule
+				remove_idea = ROB_anarchy
+			}
+			
+		}
+	}
+	
+	focus = {
+		id = ROB_eliminate_traitors
+		icon = GFX_goal_generic_forceful_treaty
+		prerequisite = { focus = ROB_establishing_order	}
+
+		x = -1
+		y = 1
+		relative_position_id = ROB_establishing_order
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+		    country_event = rksburgundynew.65
+			
+			swap_ideas = {
+				add_idea = ROB_trauma_v2
+				remove_idea = ROB_trauma
+			}
+		}
+	}
+	
+	focus = {
+		id = ROB_rebuild_burgundy
+		icon = GFX_goal_generic_construction
+		prerequisite = { focus = ROB_establishing_order	}
+
+		x = 1
+		y = 1
+		relative_position_id = ROB_establishing_order
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+		    add_political_power = 50
+			
+			swap_ideas = {
+				add_idea = ROB_destruction_v2
+				remove_idea = ROB_destruction
+			}
+			
+		}
+	}
+	
+	focus = {
+		id = ROB_propaganda_boost
+		icon = GFX_focus_generic_fascist_propaganda
+		prerequisite = { focus = ROB_eliminate_traitors  } 
+		prerequisite = { focus = ROB_rebuild_burgundy  } 
+
+		x = -1
+		y = 1
+		relative_position_id = ROB_rebuild_burgundy
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+		    add_political_power = 25
+			add_popularity = {
+                ideology = fascism
+                popularity = 0.15
+            }
+			
+			remove_ideas = ROB_trauma_v2
+		}
+	}
+	
+	focus = {
+		id = ROB_rebuilding_complete
+		icon = GFX_focus_generic_full_employment
+		prerequisite = { focus = ROB_propaganda_boost  } 
+
+		x = 0
+		y = 1
+		relative_position_id = ROB_propaganda_boost
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+		    add_political_power = 50
+			
+			swap_ideas = {
+				add_idea = ROB_destruction_v3
+				remove_idea = ROB_destruction_v2
+			}
+		}
+	}
+	
+	focus = {
+		id = ROB_fate_of_burgundy
+		icon = GFX_focus_ger_reichskommisariats
+		prerequisite = { focus = ROB_rebuilding_complete  } 
+
+		x = 0
+		y = 1
+		relative_position_id = ROB_rebuilding_complete
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+		    GER = {
+				country_event = rksburgundynew.66
+			}
+			
+		}
+	}
+}

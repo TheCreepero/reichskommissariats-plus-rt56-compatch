@@ -1,0 +1,2621 @@
+### search_filters = {FOCUS_FILTER_POLITICAL}
+### search_filters = {FOCUS_FILTER_RESEARCH}
+### search_filters = {FOCUS_FILTER_INDUSTRY}
+### search_filters = {FOCUS_FILTER_STABILITY}
+### search_filters = {FOCUS_FILTER_WAR_SUPPORT}
+### search_filters = {FOCUS_FILTER_MANPOWER}
+### search_filters = {FOCUS_FILTER_ANNEXATION}
+
+focus_tree = {
+	id = shocker_tree
+	
+	country = {
+		factor = 0
+		modifier = {
+			add = 10
+			tag = SHC
+		}
+	}
+
+	default = no
+
+	continuous_focus_position = { x = 200 y = 600 }  
+	initial_show_position = {
+		x = 10
+		y = 0
+	}
+	
+	focus = {
+		id = SHC_hail_shocker
+		icon = GFX_goal_rksplus_shocker_flag
+		#prerequisite = { focus = }
+
+		x = 10
+		y = 0
+		#relative_position_id = 
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+		    country_event = rksshocker.1
+			
+			add_political_power = 150
+			
+			hidden_effect = {
+				650 = {
+					set_victory_points = {
+					province = 13067
+					value = 10
+					}
+				}
+				set_province_name = { id = 13067 name = "Shocker Base" }      
+			}
+		}
+	}
+	
+	focus = {
+		id = SHC_prophecy_leader
+		icon = GFX_goal_rksplus_shocker_leader
+		prerequisite = { focus = SHC_hail_shocker }
+
+		x = 0
+		y = 1
+		relative_position_id = SHC_hail_shocker
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+		    country_event = rksshocker.2
+			
+			add_political_power = 150
+			
+			hidden_effect = {
+				add_country_leader_trait = dictator
+			}
+		}
+	}
+	
+	focus = {
+		id = SHC_generals_meeting
+		icon = GFX_focus_generic_military_mission
+		prerequisite = { focus = SHC_hail_shocker }
+
+		x = 5
+		y = 1
+		relative_position_id = SHC_hail_shocker
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+		    country_event = rksshocker.3
+		}
+	}
+	
+	focus = {
+		id = SHC_fill_the_armory
+		icon = GFX_goal_generic_small_arms
+		prerequisite = { focus = SHC_generals_meeting }
+
+		x = 2
+		y = 1
+		relative_position_id = SHC_generals_meeting
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+		    add_equipment_to_stockpile = {
+                type = infantry_equipment_3
+                amount = 2000000
+            }
+			
+			add_equipment_to_stockpile = {
+                type = artillery_equipment_3
+                amount = 2000000
+            }
+			
+			add_equipment_to_stockpile = {
+                type = anti_air_equipment_3
+                amount = 2000000
+            }
+			
+			add_equipment_to_stockpile = {
+                type = anti_tank_equipment_3
+                amount = 2000000
+            }
+			
+			add_equipment_to_stockpile = {
+                type = rocket_artillery_equipment_2
+                amount = 2000000
+            }
+			
+			add_equipment_to_stockpile = {
+                type = support_equipment
+                amount = 2000000
+            }
+			
+			add_equipment_to_stockpile = {
+                type = motorized_equipment
+                amount = 2000000
+            }
+			
+			add_equipment_to_stockpile = {
+                type = motorized_rocket_equipment_1
+                amount = 2000000
+            }
+			
+			add_equipment_to_stockpile = {
+                type = mechanized_equipment_3
+                amount = 2000000
+            }
+			
+			add_equipment_to_stockpile = {
+                type = train_equipment_3
+                amount = 2000000
+            }
+		}
+	}
+	
+	focus = {
+		id = SHC_armored_spearheads
+		icon = GFX_goal_generic_army_tanks
+		prerequisite = { focus = SHC_fill_the_armory }
+
+		x = 0
+		y = 1
+		relative_position_id = SHC_fill_the_armory
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			hidden_effect = {
+				if = {
+					limit = {
+						has_dlc = "No Step Back"
+					}
+					if = {
+						limit = {
+							OR = {
+								has_tech = artillery3
+								has_tech = antitank3
+							}
+						}
+						create_equipment_variant = {
+							name = "Shocker-Gattai 666"
+							type = modern_tank_equipment_1
+							parent_version = 0
+							modules = {
+								main_armament_slot = tank_heavy_cannon_3
+								turret_type_slot = tank_modern_tank_turret
+								suspension_type_slot = tank_christie_suspension
+								armor_type_slot = tank_welded_armor
+								engine_type_slot = tank_gasoline_engine
+								special_type_slot_1 = air_ground_radar_2
+								special_type_slot_2 = sloped_armor
+								special_type_slot_3 = extra_ammo_storage
+								special_type_slot_4 = smoke_launchers
+							}
+							upgrades = {
+								tank_nsb_engine_upgrade = 20
+								tank_nsb_armor_upgrade = 20
+							}
+							icon = "GFX_generic_modern_tank_medium"
+						}
+					}
+				}
+			}
+		
+			add_equipment_to_stockpile = {
+                type = modern_tank_equipment_1
+                amount = 2000000
+            }
+			add_equipment_to_stockpile = {
+                type = modern_tank_destroyer_equipment_1
+                amount = 2000000
+            }
+			add_equipment_to_stockpile = {
+                type = modern_tank_artillery_equipment_1
+                amount = 2000000
+            }
+			add_equipment_to_stockpile = {
+                type = modern_tank_aa_equipment_1
+                amount = 2000000
+            }
+		}
+	}
+	
+	focus = {
+		id = SHC_clone_army
+		icon = GFX_goal_generic_axis_build_infantry
+		prerequisite = { focus = SHC_generals_meeting }
+
+		x = 0
+		y = 1
+		relative_position_id = SHC_generals_meeting
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_manpower = 1000000
+		    country_event = rksshocker.4
+		}
+	}
+	
+	focus = {
+		id = SHC_army_exercise
+		icon = GFX_focus_generic_manpower
+		prerequisite = { focus = SHC_generals_meeting }
+
+		x = -2
+		y = 1
+		relative_position_id = SHC_generals_meeting
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			swap_ideas = {
+				add_idea = SHC_generals_idea_two
+				remove_idea = SHC_generals_idea
+			}
+			
+			army_experience = 500
+			air_experience = 500
+			navy_experience = 500
+		}
+	}
+	
+	focus = {
+		id = SHC_deploy_army
+		icon = GFX_focus_generic_fascist_troops
+		prerequisite = { focus = SHC_clone_army }
+
+		x = 0
+		y = 1
+		relative_position_id = SHC_clone_army
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_stability = 0.5
+			
+			division_template = {
+				name = "Shocker Main Division"
+				priority = 1
+				division_names_group = JAP_INF_01
+				regiments = {
+					infantry = { x = 0 y = 0 }
+					infantry = { x = 0 y = 1 }
+					infantry = { x = 0 y = 2 }
+					infantry = { x = 0 y = 3 }
+					infantry = { x = 0 y = 4 }
+		
+					infantry = { x = 1 y = 0 }
+					infantry = { x = 1 y = 1 }
+					infantry = { x = 1 y = 2 }
+					infantry = { x = 1 y = 3 }
+					infantry = { x = 1 y = 4 }
+					
+					infantry = { x = 2 y = 0 }
+					infantry = { x = 2 y = 1 }
+					infantry = { x = 2 y = 2 }
+					infantry = { x = 2 y = 3 }
+					
+					artillery_brigade = { x = 3 y = 0 }
+					artillery_brigade = { x = 3 y = 1 }
+					artillery_brigade = { x = 3 y = 2 }
+					artillery_brigade = { x = 3 y = 3 }
+
+
+		
+				}
+				support = {
+				    engineer = { x = 0 y = 0 }
+					artillery = { x = 0 y = 1 }
+					anti_air = { x = 0 y = 2 }
+					military_police = { x = 0 y = 3 }
+					logistics_company = { x = 0 y = 4 }
+				}
+			}
+			
+			650 = {
+				create_unit = {
+					division = "name = \"1. Shocker Main Division\" division_template = \"Shocker Main Division\" start_experience_factor = 1" 
+					owner = SHC
+				}
+				
+				create_unit = {
+					division = "name = \"2. Shocker Main Division\" division_template = \"Shocker Main Division\" start_experience_factor = 1" 
+                    owner = SHC
+				}
+				
+				create_unit = {
+					division = "name = \"3. Shocker Main Division\" division_template = \"Shocker Main Division\" start_experience_factor = 1" 
+                    owner = SHC
+				}
+				
+				create_unit = {
+					division = "name = \"4. Shocker Main Division\" division_template = \"Shocker Main Division\" start_experience_factor = 1" 
+                    owner = SHC
+				}
+				
+				create_unit = {
+					division = "name = \"5. Shocker Main Division\" division_template = \"Shocker Main Division\" start_experience_factor = 1" 
+                    owner = SHC
+				}
+				
+				create_unit = {
+					division = "name = \"6. Shocker Main Division\" division_template = \"Shocker Main Division\" start_experience_factor = 1" 
+                    owner = SHC
+				}
+				
+				create_unit = {
+					division = "name = \"7. Shocker Main Division\" division_template = \"Shocker Main Division\" start_experience_factor = 1" 
+                    owner = SHC
+				}
+				
+				create_unit = {
+					division = "name = \"8. Shocker Main Division\" division_template = \"Shocker Main Division\" start_experience_factor = 1" 
+                    owner = SHC
+				}
+				
+				create_unit = {
+					division = "name = \"9. Shocker Main Division\" division_template = \"Shocker Main Division\" start_experience_factor = 1" 
+                    owner = SHC
+				}
+				
+			}
+		}
+	}
+	
+	focus = {
+		id = SHC_wargames
+		icon = GFX_focus_generic_military_mission
+		prerequisite = { focus = SHC_army_exercise }
+
+		x = 0
+		y = 1
+		relative_position_id = SHC_army_exercise
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			swap_ideas = {
+				add_idea = SHC_generals_idea_three
+				remove_idea = SHC_generals_idea_two
+			}
+		}
+	}
+	
+	focus = {
+		id = SHC_airforce_focus
+		icon = GFX_goal_generic_build_airforce
+		prerequisite = { focus = SHC_generals_meeting }
+
+		x = 5
+		y = 1
+		relative_position_id = SHC_generals_meeting
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			air_experience = 500
+		}
+	}
+	
+	focus = {
+		id = SHC_build_more_planes
+		icon = GFX_goal_generic_air_fighter
+		prerequisite = { focus = SHC_airforce_focus }
+
+		x = -1
+		y = 1
+		relative_position_id = SHC_airforce_focus
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+		    add_equipment_to_stockpile = {
+                type = jet_fighter_equipment_2
+                amount = 2000000
+            }
+			add_equipment_to_stockpile = {
+                type = jet_strat_bomber_equipment_1
+                amount = 1000000
+            }
+			add_equipment_to_stockpile = {
+                type = jet_tac_bomber_equipment_2
+                amount = 1000000
+            }
+			add_equipment_to_stockpile = {
+                type = nav_bomber_equipment_3
+                amount = 50000
+            }
+		}
+	}
+	
+	focus = {
+		id = SHC_eagles_of_sky
+		icon = GFX_goal_generic_CAS
+		prerequisite = { focus = SHC_airforce_focus }
+
+		x = 1
+		y = 1
+		relative_position_id = SHC_airforce_focus
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+		    add_ideas = SHC_eagles_idea
+		}
+	}
+	
+	focus = {
+		id = SHC_naval_focus
+		icon = GFX_goal_generic_build_navy
+		prerequisite = { focus = SHC_generals_meeting }
+
+		x = 9
+		y = 1
+		relative_position_id = SHC_generals_meeting
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+		    navy_experience = 500
+		}
+	}
+	
+	focus = {
+		id = SHC_amphibious_assault
+		icon = GFX_goal_generic_amphibious_assault
+		prerequisite = { focus = SHC_naval_focus }
+
+		x = 1
+		y = 1
+		relative_position_id = SHC_naval_focus
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+		    add_ideas = SHC_amphibious_idea
+		}
+	}
+	
+	focus = {
+		id = SHC_sharks_of_pacific
+		icon = GFX_focus_generic_navy_battleship2
+		prerequisite = { focus = SHC_naval_focus }
+
+		x = -1
+		y = 1
+		relative_position_id = SHC_naval_focus
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_ideas = SHC_naval_ships_idea
+		}
+	}
+	
+	focus = {
+		id = SHC_devil_incarnate
+		icon = GFX_focus_generic_total_war
+		prerequisite = { focus = SHC_wargames }
+		prerequisite = { focus = SHC_armored_spearheads }
+		prerequisite = { focus = SHC_deploy_army }
+
+		x = 2
+		y = 1
+		relative_position_id = SHC_wargames
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+		    country_event = rksshocker.5
+			
+			division_template = {
+				name = "Shocker Armored Division"
+				priority = 1
+				division_names_group = JAP_ARM_01
+				regiments = {
+					modern_armor = { x = 0 y = 0 }
+					modern_armor = { x = 0 y = 1 }
+					modern_armor = { x = 0 y = 2 }
+					modern_armor = { x = 0 y = 3 }
+		
+					modern_armor = { x = 1 y = 0 }
+					modern_armor = { x = 1 y = 1 }
+					modern_armor = { x = 1 y = 2 }
+					
+					mechanized = { x = 2 y = 0 }
+					mechanized = { x = 2 y = 1 }
+					mechanized = { x = 2 y = 2 }
+					
+					mechanized = { x = 2 y = 0 }
+					mechanized = { x = 2 y = 1 }
+					mechanized = { x = 2 y = 2 }
+					
+					mot_artillery_brigade = { x = 3 y = 0 }
+					mot_artillery_brigade = { x = 3 y = 1 }
+					motorized_rocket_brigade = { x = 3 y = 2 }
+					motorized_rocket_brigade = { x = 3 y = 3 }
+
+
+		
+				}
+				support = {
+				    engineer = { x = 0 y = 0 }
+					maintenance_company = { x = 0 y = 1 }
+					anti_air = { x = 0 y = 2 }
+					signal_company = { x = 0 y = 3 }
+					logistics_company = { x = 0 y = 4 }
+				}
+			}
+			
+			division_template = {
+				name = "Shocker Mechanized Division"
+				priority = 1
+				division_names_group = JAP_ARM_01
+				regiments = {
+					mechanized = { x = 0 y = 0 }
+					mechanized = { x = 0 y = 1 }
+					mechanized = { x = 0 y = 2 }
+					mechanized = { x = 0 y = 3 }
+					mechanized = { x = 0 y = 4 }
+		
+					mechanized = { x = 1 y = 0 }
+					mechanized = { x = 1 y = 1 }
+					mechanized = { x = 1 y = 2 }
+					mechanized = { x = 1 y = 3 }
+					mechanized = { x = 1 y = 4 }
+					
+					mechanized = { x = 2 y = 0 }
+					mechanized = { x = 2 y = 1 }
+					mechanized = { x = 2 y = 2 }
+					mechanized = { x = 2 y = 3 }
+					
+					mot_artillery_brigade = { x = 3 y = 0 }
+					mot_artillery_brigade = { x = 3 y = 1 }
+					mot_artillery_brigade = { x = 3 y = 2 }
+					mot_artillery_brigade = { x = 3 y = 3 }
+
+
+		
+				}
+				support = {
+				    engineer = { x = 0 y = 0 }
+					maintenance_company = { x = 0 y = 1 }
+					anti_air = { x = 0 y = 2 }
+					signal_company = { x = 0 y = 3 }
+					logistics_company = { x = 0 y = 4 }
+				}
+			}
+			
+			650 = {
+				create_unit = {
+					division = "name = \"1. Shocker Armored Division\" division_template = \"Shocker Armored Division\" start_experience_factor = 1" 
+					owner = SHC
+				}
+				
+				create_unit = {
+					division = "name = \"2. Shocker Armored Division\" division_template = \"Shocker Armored Division\" start_experience_factor = 1" 
+                    owner = SHC
+				}
+				
+				create_unit = {
+					division = "name = \"3. Shocker Armored Division\" division_template = \"Shocker Armored Division\" start_experience_factor = 1" 
+                    owner = SHC
+				}
+				
+				create_unit = {
+					division = "name = \"4. Shocker Armored Division\" division_template = \"Shocker Armored Division\" start_experience_factor = 1" 
+                    owner = SHC
+				}
+				
+				create_unit = {
+					division = "name = \"5. Shocker Armored Division\" division_template = \"Shocker Armored Division\" start_experience_factor = 1" 
+                    owner = SHC
+				}
+				
+				create_unit = {
+					division = "name = \"1. Shocker Mechanized Division\" division_template = \"Shocker Mechanized Division\" start_experience_factor = 1" 
+                    owner = SHC
+				}
+				
+				create_unit = {
+					division = "name = \"2. Shocker Mechanized Division\" division_template = \"Shocker Mechanized Division\" start_experience_factor = 1" 
+                    owner = SHC
+				}
+				
+			}
+		}
+	}
+	
+	
+	
+	focus = {
+		id = SHC_industrialing_efforts
+		icon = GFX_focus_generic_modernize_industry
+		prerequisite = { focus = SHC_hail_shocker }
+
+		x = -5
+		y = 1
+		relative_position_id = SHC_hail_shocker
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+		    add_ideas = SHC_production
+		}
+	}
+	
+	focus = {
+		id = SHC_fortify_the_island
+		icon = GFX_goal_generic_construct_military
+		prerequisite = { focus = SHC_industrialing_efforts }
+
+		x = 0
+		y = 1
+		relative_position_id = SHC_industrialing_efforts
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+		    650 = {
+				add_building_construction = {
+				type = bunker
+				province = 13067  
+				level = 10
+				}
+			}
+			
+			650 = {
+				add_building_construction = {
+				type = coastal_bunker
+				province = 13067  
+				level = 10
+				}
+			}
+			650 = {
+				add_building_construction = {
+				type = naval_base
+				province = 13067  
+				level = 10
+				}
+			}
+			
+			650 = {
+				add_building_construction = {
+				type = infrastructure
+				instant_build = yes
+				level = 5
+				}
+			}
+		}
+	}
+	
+	focus = {
+		id = SHC_resources_duplication
+		icon = GFX_focus_generic_stockpile_fuel
+		prerequisite = { focus = SHC_fortify_the_island focus = SHC_factories_construction focus = SHC_airbase_construction }
+
+		x = 0
+		y = 1
+		relative_position_id = SHC_fortify_the_island
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_ideas = SHC_logistic
+		
+			custom_effect_tooltip = rksplus_shocker_resource_tt
+		    hidden_effect = {
+				650 = {
+					add_resource = {
+					type = steel
+					amount = 999
+					}
+				
+					add_resource = {
+					type = rubber
+					amount = 999
+					}
+				
+					add_resource = {
+					type = aluminium
+					amount = 999
+					}
+				
+					add_resource = {
+					type = oil
+					amount = 999
+					}
+				
+					add_resource = {
+					type = tungsten
+					amount = 999
+					}
+				
+					add_resource = {
+					type = chromium
+					amount = 999
+					}
+				}
+			}
+			
+		}
+	}
+	
+	focus = {
+		id = SHC_factories_construction
+		icon = GFX_goal_generic_construct_civ_factory
+		prerequisite = { focus = SHC_industrialing_efforts }
+
+		x = -2
+		y = 1
+		relative_position_id = SHC_industrialing_efforts
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+		    650 = { 
+			    add_extra_state_shared_building_slots = 10
+				add_building_construction = {
+					type = industrial_complex
+					level = 10
+					instant_build = yes
+				}
+				add_extra_state_shared_building_slots = 15
+				add_building_construction = {
+					type = arms_factory
+					level = 15
+					instant_build = yes
+				}
+			}
+			
+			add_offsite_building = { type = industrial_complex level = 30 }
+			add_offsite_building = { type = arms_factory level = 30 }
+		}
+	}
+	
+	focus = {
+		id = SHC_airbase_construction
+		icon = GFX_goal_generic_air_production
+		prerequisite = { focus = SHC_industrialing_efforts }
+
+		x = 2
+		y = 1
+		relative_position_id = SHC_industrialing_efforts
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			650 = {
+				add_building_construction = {
+				type = anti_air_building
+				instant_build = yes
+				level = 5
+				}
+			}
+			
+			650 = {
+				add_building_construction = {
+				type = radar_station
+				instant_build = yes
+				level = 6
+				}
+			}
+			650 = {
+				add_building_construction = {
+				type = air_base
+				instant_build = yes
+				level = 10
+				}
+			}
+		}
+	}
+	
+	focus = {
+		id = SHC_future_ambitions
+		icon = GFX_focus_ger_reichskommisariats
+		prerequisite = { focus = SHC_prophecy_leader }
+		prerequisite = { focus = SHC_devil_incarnate }
+		prerequisite = { focus = SHC_resources_duplication }
+
+		x = 0
+		y = 4
+		relative_position_id = SHC_prophecy_leader
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			country_event = rksshocker.6
+		}
+	}
+	
+	focus = {
+		id = SHC_daishocker
+		icon = GFX_goal_rksplus_shocker_daishocker
+		prerequisite = { focus = SHC_future_ambitions }
+		
+		x = 0
+		y = 2
+		relative_position_id = SHC_future_ambitions
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+		
+			create_faction = "Dai-Shocker"
+			
+			country_event = rksshocker.7
+			
+			hidden_effect = {
+			news_event = { hours = 6 id = rksnews.2 }
+		    }
+		}
+	}
+	
+	focus = {
+		id = SHC_demand_japan
+		icon = GFX_goal_generic_alliance
+		prerequisite = { focus = SHC_daishocker }
+		
+		x = 0
+		y = 1
+		relative_position_id = SHC_daishocker
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			GER = { country_event = rksplus.52 }
+		}
+	}
+	
+	focus = {
+		id = SHC_core_japan
+		icon = GFX_goal_generic_demand_territory
+		prerequisite = { focus = SHC_demand_japan }
+
+		x = 0
+		y = 1
+		relative_position_id = SHC_demand_japan
+		cost = 2
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		    controls_state = 555
+		    controls_state = 536
+		    controls_state = 533
+		    controls_state = 534
+		    controls_state = 282
+		    controls_state = 535
+		    controls_state = 532
+		    controls_state = 531
+		    controls_state = 529
+		    controls_state = 530
+		    controls_state = 528
+
+			controls_state = 1019
+			controls_state = 1018
+			controls_state = 1020
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+		
+			SHC = {
+			    add_state_core = 555
+			    add_state_core = 536
+			    add_state_core = 533
+			    add_state_core = 534
+			    add_state_core = 282
+			    add_state_core = 535
+			    add_state_core = 532
+			    add_state_core = 531
+			    add_state_core = 529
+			    add_state_core = 530
+			    add_state_core = 528
+			    add_state_core = 526
+
+				add_state_core = 1019
+				add_state_core = 1018
+				add_state_core = 1020
+		    }
+	    }
+		
+		
+	} 
+	
+	focus = {
+		id = SHC_move_to_japan
+		icon = GFX_goal_generic_occupy_states_ongoing_war
+		prerequisite = { focus = SHC_core_japan }
+
+		x = 0
+		y = 1
+		relative_position_id = SHC_core_japan
+		cost = 2
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+		
+		    SHC = {
+			    set_capital = {
+				    state = 282
+				    remember_old_capital = yes
+			    }
+			}
+		}
+	}
+	
+	focus = {
+		id = SHC_march_to_berlin
+		icon = GFX_focus_attack_germany
+		prerequisite = { focus = SHC_move_to_japan }
+
+		x = 0
+		y = 1
+		relative_position_id = SHC_move_to_japan
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		
+		bypass = {
+		    OR = { 
+				has_war_with = GER
+				NOT = {country_exists = GER }
+			}
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+
+			declare_war_on = { 
+			    target = GER
+				type = annex_everything 
+			}
+			
+			hidden_effect = {
+			    news_event = { hours = 6 id = rksnews.6 }
+			}
+		}
+	}
+	
+	focus = {
+		id = SHC_pressure_ordensstaat
+		icon = GFX_goal_generic_political_pressure
+		prerequisite = { focus = SHC_march_to_berlin }
+
+		x = 0
+		y = 1
+		relative_position_id = SHC_march_to_berlin
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+		
+			OBG = { country_event = rksplus.56 }
+			OGT = { country_event = rksplus.57 }
+		}
+	}
+	
+	focus = {
+		id = SHC_warplan_germania
+		icon = GFX_focus_attack_germany
+		prerequisite = { focus = SHC_daishocker }
+
+		x = 5
+		y = 1
+		relative_position_id = SHC_daishocker
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+
+		available = {
+			has_completed_focus = SHC_march_to_berlin
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			country_event = rksshocker.18
+		}
+	}
+	
+	focus = {
+		id = SHC_strike_korea
+		icon = GFX_goal_generic_more_territorial_claims
+		prerequisite = { focus = SHC_warplan_germania }
+
+		x = 0
+		y = 1
+		relative_position_id = SHC_warplan_germania
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		
+		available = {
+			525 = { state_is_owned_by_GER_or_others_shockerwar_trigger = yes }
+			527 = { state_is_owned_by_GER_or_others_shockerwar_trigger = yes }
+			
+			has_war_with = GER
+			
+			NOT = {
+				has_idea = SHC_planning_offensive_idea
+			}
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			country_event = rksshocker.19
+			
+			GER = {
+				country_event = rksshocker.21
+			}
+		}
+	}
+	
+	focus = {
+		id = SHC_strike_nanjing
+		icon = GFX_goal_generic_more_territorial_claims
+		prerequisite = { focus = SHC_warplan_germania }
+
+		x = 2
+		y = 1
+		relative_position_id = SHC_warplan_germania
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		
+		available = {
+			613 = { state_is_owned_by_GER_or_others_shockerwar_trigger = yes }
+			has_war_with = GER
+			
+			NOT = {
+				has_idea = SHC_planning_offensive_idea
+			}
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			country_event = rksshocker.23
+			
+			GER = {
+				country_event = rksshocker.25
+			}
+		}
+	}
+	
+	focus = {
+		id = SHC_strike_hongkong
+		icon = GFX_goal_generic_more_territorial_claims
+		prerequisite = { focus = SHC_warplan_germania }
+
+		x = -2
+		y = 1
+		relative_position_id = SHC_warplan_germania
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		
+		available = {
+			593 = { state_is_owned_by_GER_or_others_shockerwar_trigger = yes }
+			326 = { state_is_owned_by_GER_or_others_shockerwar_trigger = yes }
+			has_war_with = GER
+			
+			NOT = {
+				has_idea = SHC_planning_offensive_idea
+			}
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			country_event = rksshocker.27
+			
+			GER = {
+				country_event = rksshocker.29
+			}
+		}
+	}
+	
+	focus = {
+		id = SHC_strike_indochina
+		icon = GFX_goal_generic_more_territorial_claims
+		prerequisite = { focus = SHC_strike_hongkong focus = SHC_strike_korea focus = SHC_strike_nanjing}
+
+		x = 1
+		y = 1
+		relative_position_id = SHC_strike_hongkong
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		
+		available = {
+			671 = { state_is_owned_by_GER_or_others_shockerwar_trigger = yes }
+			286 = { state_is_owned_by_GER_or_others_shockerwar_trigger = yes }
+			has_war_with = GER
+			
+			NOT = {
+				has_idea = SHC_planning_offensive_idea
+			}
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			country_event = rksshocker.31
+			
+			GER = {
+				country_event = rksshocker.33
+			}
+		}
+	}
+	
+	focus = {
+		id = SHC_strike_malaya
+		icon = GFX_goal_generic_more_territorial_claims
+		prerequisite = { focus = SHC_strike_hongkong focus = SHC_strike_korea focus = SHC_strike_nanjing }
+
+		x = 3
+		y = 1
+		relative_position_id = SHC_strike_hongkong
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		
+		available = {
+			336 = { state_is_owned_by_GER_or_others_shockerwar_trigger = yes }
+			has_war_with = GER
+			
+			NOT = {
+				has_idea = SHC_planning_offensive_idea
+			}
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			country_event = rksshocker.35
+			
+			GER = {
+				country_event = rksshocker.37
+			}
+		}
+	}
+	
+	focus = {
+		id = SHC_end_their_suffering
+		icon = GFX_goal_generic_attack_allies
+		prerequisite = { focus = SHC_strike_indochina focus = SHC_strike_malaya }
+
+		x = 1
+		y = 1
+		relative_position_id = SHC_strike_indochina
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_ideas = SHC_world_purification_idea
+		}
+	}
+	
+	focus = {
+		id = SHC_world_conquest
+		icon = GFX_goal_rksplus_purifyworld
+		prerequisite = { focus = SHC_end_their_suffering  }
+
+		x = 0
+		y = 1
+		relative_position_id = SHC_end_their_suffering
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_political_power = 250
+		}
+	}
+	
+	focus = {
+		id = SHC_shocker_world
+		icon = GFX_goal_rksplus_shocker_akumanoshocker
+		prerequisite = { focus = SHC_world_conquest  }
+
+		x = 0
+		y = 1
+		relative_position_id = SHC_world_conquest
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		
+		available = {
+			NOT = {
+				country_exists = GER
+			}
+			controls_state = 64
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			country_event = rksshocker.39
+			
+			custom_effect_tooltip = rksplus_shocker_worldconquest_tt
+			
+			hidden_effect = {
+				add_state_core = 1
+				add_state_core = 2
+				add_state_core = 3
+				add_state_core = 4
+				add_state_core = 5
+				add_state_core = 6
+				add_state_core = 7
+				add_state_core = 8
+				add_state_core = 9
+				add_state_core = 10
+				add_state_core = 11
+				add_state_core = 12
+				add_state_core = 13
+				add_state_core = 14
+				add_state_core = 15
+				add_state_core = 16
+				add_state_core = 17
+				add_state_core = 18
+				add_state_core = 19
+				add_state_core = 20
+				add_state_core = 21
+				add_state_core = 22
+				add_state_core = 23
+				add_state_core = 24
+				add_state_core = 25
+				add_state_core = 26
+				add_state_core = 27
+				add_state_core = 28
+				add_state_core = 29
+				add_state_core = 30
+				add_state_core = 31
+				add_state_core = 32
+				add_state_core = 33
+				add_state_core = 34
+				add_state_core = 35
+				add_state_core = 36
+				add_state_core = 37
+				add_state_core = 38
+				add_state_core = 39
+				add_state_core = 40
+				add_state_core = 41
+				add_state_core = 42
+				add_state_core = 43
+				add_state_core = 44
+				add_state_core = 45
+				add_state_core = 46
+				add_state_core = 47
+				add_state_core = 48
+				add_state_core = 49
+				add_state_core = 50
+				add_state_core = 51
+				add_state_core = 52
+				add_state_core = 53
+				add_state_core = 54
+				add_state_core = 55
+				add_state_core = 56
+				add_state_core = 57
+				add_state_core = 58
+				add_state_core = 59
+				add_state_core = 60
+				add_state_core = 61
+				add_state_core = 62
+				add_state_core = 63
+				add_state_core = 64
+				add_state_core = 65
+				add_state_core = 66
+				add_state_core = 67
+				add_state_core = 68
+				add_state_core = 69
+				add_state_core = 70
+				add_state_core = 71
+				add_state_core = 72
+				add_state_core = 73
+				add_state_core = 74
+				add_state_core = 75
+				add_state_core = 76
+				add_state_core = 77
+				add_state_core = 78
+				add_state_core = 79
+				add_state_core = 80
+				add_state_core = 81
+				add_state_core = 82
+				add_state_core = 83
+				add_state_core = 84
+				add_state_core = 85
+				add_state_core = 86
+				add_state_core = 87
+				add_state_core = 88
+				add_state_core = 89
+				add_state_core = 90
+				add_state_core = 91
+				add_state_core = 92
+				add_state_core = 93
+				add_state_core = 94
+				add_state_core = 95
+				add_state_core = 96
+				add_state_core = 97
+				add_state_core = 98
+				add_state_core = 99
+				add_state_core = 100
+				add_state_core = 101
+				add_state_core = 102
+				add_state_core = 103
+				add_state_core = 104
+				add_state_core = 105
+				add_state_core = 106
+				add_state_core = 107
+				add_state_core = 108
+				add_state_core = 109
+				add_state_core = 110
+				add_state_core = 111
+				add_state_core = 112
+				add_state_core = 113
+				add_state_core = 114
+				add_state_core = 115
+				add_state_core = 116
+				add_state_core = 117
+				add_state_core = 118
+				add_state_core = 119
+				add_state_core = 120
+				add_state_core = 121
+				add_state_core = 122
+				add_state_core = 123
+				add_state_core = 124
+				add_state_core = 125
+				add_state_core = 126
+				add_state_core = 127
+				add_state_core = 128
+				add_state_core = 129
+				add_state_core = 130
+				add_state_core = 131
+				add_state_core = 132
+				add_state_core = 133
+				add_state_core = 134
+				add_state_core = 135
+				add_state_core = 136
+				add_state_core = 137
+				add_state_core = 138
+				add_state_core = 139
+				add_state_core = 140
+				add_state_core = 141
+				add_state_core = 142
+				add_state_core = 143
+				add_state_core = 144
+				add_state_core = 145
+				add_state_core = 146
+				add_state_core = 147
+				add_state_core = 148
+				add_state_core = 149
+				add_state_core = 150
+				add_state_core = 151
+				add_state_core = 152
+				add_state_core = 153
+				add_state_core = 154
+				add_state_core = 155
+				add_state_core = 156
+				add_state_core = 157
+				add_state_core = 158
+				add_state_core = 159
+				add_state_core = 160
+				add_state_core = 161
+				add_state_core = 162
+				add_state_core = 163
+				add_state_core = 164
+				add_state_core = 165
+				add_state_core = 166
+				add_state_core = 167
+				add_state_core = 168
+				add_state_core = 169
+				add_state_core = 170
+				add_state_core = 171
+				add_state_core = 172
+				add_state_core = 173
+				add_state_core = 174
+				add_state_core = 175
+				add_state_core = 176
+				add_state_core = 177
+				add_state_core = 178
+				add_state_core = 179
+				add_state_core = 180
+				add_state_core = 181
+				add_state_core = 182
+				add_state_core = 183
+				add_state_core = 184
+				add_state_core = 185
+				add_state_core = 186
+				add_state_core = 187
+				add_state_core = 188
+				add_state_core = 189
+				add_state_core = 190
+				add_state_core = 191
+				add_state_core = 192
+				add_state_core = 193
+				add_state_core = 194
+				add_state_core = 195
+				add_state_core = 196
+				add_state_core = 197
+				add_state_core = 198
+				add_state_core = 199
+				add_state_core = 200
+				add_state_core = 201
+				add_state_core = 202
+				add_state_core = 203
+				add_state_core = 204
+				add_state_core = 205
+				add_state_core = 206
+				add_state_core = 207
+				add_state_core = 208
+				add_state_core = 209
+				add_state_core = 210
+				add_state_core = 211
+				add_state_core = 212
+				add_state_core = 213
+				add_state_core = 214
+				add_state_core = 215
+				add_state_core = 216
+				add_state_core = 217
+				add_state_core = 218
+				add_state_core = 219
+				add_state_core = 220
+				add_state_core = 221
+				add_state_core = 222
+				add_state_core = 223
+				add_state_core = 224
+				add_state_core = 225
+				add_state_core = 226
+				add_state_core = 227
+				add_state_core = 228
+				add_state_core = 229
+				add_state_core = 230
+				add_state_core = 231
+				add_state_core = 232
+				add_state_core = 233
+				add_state_core = 234
+				add_state_core = 235
+				add_state_core = 236
+				add_state_core = 237
+				add_state_core = 238
+				add_state_core = 239
+				add_state_core = 240
+				add_state_core = 241
+				add_state_core = 242
+				add_state_core = 243
+				add_state_core = 244
+				add_state_core = 245
+				add_state_core = 246
+				add_state_core = 247
+				add_state_core = 248
+				add_state_core = 249
+				add_state_core = 250
+				add_state_core = 251
+				add_state_core = 252
+				add_state_core = 253
+				add_state_core = 254
+				add_state_core = 255
+				add_state_core = 256
+				add_state_core = 257
+				add_state_core = 258
+				add_state_core = 259
+				add_state_core = 260
+				add_state_core = 261
+				add_state_core = 262
+				add_state_core = 263
+				add_state_core = 264
+				add_state_core = 265
+				add_state_core = 266
+				add_state_core = 267
+				add_state_core = 268
+				add_state_core = 269
+				add_state_core = 270
+				add_state_core = 271
+				add_state_core = 272
+				add_state_core = 273
+				add_state_core = 274
+				add_state_core = 275
+				add_state_core = 276
+				add_state_core = 277
+				add_state_core = 278
+				add_state_core = 279
+				add_state_core = 280
+				add_state_core = 281
+				add_state_core = 282
+				add_state_core = 283
+				add_state_core = 284
+				add_state_core = 285
+				add_state_core = 286
+				add_state_core = 287
+				add_state_core = 288
+				add_state_core = 289
+				add_state_core = 290
+				add_state_core = 291
+				add_state_core = 292
+				add_state_core = 293
+				add_state_core = 294
+				add_state_core = 295
+				add_state_core = 296
+				add_state_core = 297
+				add_state_core = 298
+				add_state_core = 299
+				add_state_core = 300
+				add_state_core = 301
+				add_state_core = 302
+				add_state_core = 303
+				add_state_core = 304
+				add_state_core = 305
+				add_state_core = 306
+				add_state_core = 307
+				add_state_core = 308
+				add_state_core = 309
+				add_state_core = 310
+				add_state_core = 311
+				add_state_core = 312
+				add_state_core = 313
+				add_state_core = 314
+				add_state_core = 315
+				add_state_core = 316
+				add_state_core = 317
+				add_state_core = 318
+				add_state_core = 319
+				add_state_core = 320
+				add_state_core = 321
+				add_state_core = 322
+				add_state_core = 323
+				add_state_core = 324
+				add_state_core = 325
+				add_state_core = 326
+				add_state_core = 327
+				add_state_core = 328
+				add_state_core = 329
+				add_state_core = 330
+				add_state_core = 331
+				add_state_core = 332
+				add_state_core = 333
+				add_state_core = 334
+				add_state_core = 335
+				add_state_core = 336
+				add_state_core = 337
+				add_state_core = 338
+				add_state_core = 339
+				add_state_core = 340
+				add_state_core = 341
+				add_state_core = 342
+				add_state_core = 343
+				add_state_core = 344
+				add_state_core = 345
+				add_state_core = 346
+				add_state_core = 347
+				add_state_core = 348
+				add_state_core = 349
+				add_state_core = 350
+				add_state_core = 351
+				add_state_core = 352
+				add_state_core = 353
+				add_state_core = 354
+				add_state_core = 355
+				add_state_core = 356
+				add_state_core = 357
+				add_state_core = 358
+				add_state_core = 359
+				add_state_core = 360
+				add_state_core = 361
+				add_state_core = 362
+				add_state_core = 363
+				add_state_core = 364
+				add_state_core = 365
+				add_state_core = 366
+				add_state_core = 367
+				add_state_core = 368
+				add_state_core = 369
+				add_state_core = 370
+				add_state_core = 371
+				add_state_core = 372
+				add_state_core = 373
+				add_state_core = 374
+				add_state_core = 375
+				add_state_core = 376
+				add_state_core = 377
+				add_state_core = 378
+				add_state_core = 379
+				add_state_core = 380
+				add_state_core = 381
+				add_state_core = 382
+				add_state_core = 383
+				add_state_core = 384
+				add_state_core = 385
+				add_state_core = 386
+				add_state_core = 387
+				add_state_core = 388
+				add_state_core = 389
+				add_state_core = 390
+				add_state_core = 391
+				add_state_core = 392
+				add_state_core = 393
+				add_state_core = 394
+				add_state_core = 395
+				add_state_core = 396
+				add_state_core = 397
+				add_state_core = 398
+				add_state_core = 399
+				add_state_core = 400
+				add_state_core = 401
+				add_state_core = 402
+				add_state_core = 403
+				add_state_core = 404
+				add_state_core = 405
+				add_state_core = 406
+				add_state_core = 407
+				add_state_core = 408
+				add_state_core = 409
+				add_state_core = 410
+				add_state_core = 411
+				add_state_core = 412
+				add_state_core = 413
+				add_state_core = 414
+				add_state_core = 415
+				add_state_core = 416
+				add_state_core = 417
+				add_state_core = 418
+				add_state_core = 419
+				add_state_core = 420
+				add_state_core = 421
+				add_state_core = 422
+				add_state_core = 423
+				add_state_core = 424
+				add_state_core = 425
+				add_state_core = 426
+				add_state_core = 427
+				add_state_core = 428
+				add_state_core = 429
+				add_state_core = 430
+				add_state_core = 431
+				add_state_core = 432
+				add_state_core = 433
+				add_state_core = 434
+				add_state_core = 435
+				add_state_core = 436
+				add_state_core = 437
+				add_state_core = 438
+				add_state_core = 439
+				add_state_core = 440
+				add_state_core = 441
+				add_state_core = 442
+				add_state_core = 443
+				add_state_core = 444
+				add_state_core = 445
+				add_state_core = 446
+				add_state_core = 447
+				add_state_core = 448
+				add_state_core = 449
+				add_state_core = 450
+				add_state_core = 451
+				add_state_core = 452
+				add_state_core = 453
+				add_state_core = 454
+				add_state_core = 455
+				add_state_core = 456
+				add_state_core = 457
+				add_state_core = 458
+				add_state_core = 459
+				add_state_core = 460
+				add_state_core = 461
+				add_state_core = 462
+				add_state_core = 463
+				add_state_core = 464
+				add_state_core = 465
+				add_state_core = 466
+				add_state_core = 467
+				add_state_core = 468
+				add_state_core = 469
+				add_state_core = 470
+				add_state_core = 471
+				add_state_core = 472
+				add_state_core = 473
+				add_state_core = 474
+				add_state_core = 475
+				add_state_core = 476
+				add_state_core = 477
+				add_state_core = 478
+				add_state_core = 479
+				add_state_core = 480
+				add_state_core = 481
+				add_state_core = 482
+				add_state_core = 483
+				add_state_core = 484
+				add_state_core = 485
+				add_state_core = 486
+				add_state_core = 487
+				add_state_core = 488
+				add_state_core = 489
+				add_state_core = 490
+				add_state_core = 491
+				add_state_core = 492
+				add_state_core = 493
+				add_state_core = 494
+				add_state_core = 495
+				add_state_core = 496
+				add_state_core = 497
+				add_state_core = 498
+				add_state_core = 499
+				add_state_core = 500
+				add_state_core = 501
+				add_state_core = 502
+				add_state_core = 503
+				add_state_core = 504
+				add_state_core = 505
+				add_state_core = 506
+				add_state_core = 507
+				add_state_core = 508
+				add_state_core = 509
+				add_state_core = 510
+				add_state_core = 511
+				add_state_core = 512
+				add_state_core = 513
+				add_state_core = 514
+				add_state_core = 515
+				add_state_core = 516
+				add_state_core = 517
+				add_state_core = 518
+				add_state_core = 519
+				add_state_core = 520
+				add_state_core = 521
+				add_state_core = 522
+				add_state_core = 523
+				add_state_core = 524
+				add_state_core = 525
+				add_state_core = 526
+				add_state_core = 527
+				add_state_core = 528
+				add_state_core = 529
+				add_state_core = 530
+				add_state_core = 531
+				add_state_core = 532
+				add_state_core = 533
+				add_state_core = 534
+				add_state_core = 535
+				add_state_core = 536
+				add_state_core = 537
+				add_state_core = 538
+				add_state_core = 539
+				add_state_core = 540
+				add_state_core = 541
+				add_state_core = 542
+				add_state_core = 543
+				add_state_core = 544
+				add_state_core = 545
+				add_state_core = 546
+				add_state_core = 547
+				add_state_core = 548
+				add_state_core = 549
+				add_state_core = 550
+				add_state_core = 551
+				add_state_core = 552
+				add_state_core = 553
+				add_state_core = 554
+				add_state_core = 555
+				add_state_core = 556
+				add_state_core = 557
+				add_state_core = 558
+				add_state_core = 559
+				add_state_core = 560
+				add_state_core = 561
+				add_state_core = 562
+				add_state_core = 563
+				add_state_core = 564
+				add_state_core = 565
+				add_state_core = 566
+				add_state_core = 567
+				add_state_core = 568
+				add_state_core = 569
+				add_state_core = 570
+				add_state_core = 571
+				add_state_core = 572
+				add_state_core = 573
+				add_state_core = 574
+				add_state_core = 575
+				add_state_core = 576
+				add_state_core = 577
+				add_state_core = 578
+				add_state_core = 579
+				add_state_core = 580
+				add_state_core = 581
+				add_state_core = 582
+				add_state_core = 583
+				add_state_core = 584
+				add_state_core = 585
+				add_state_core = 586
+				add_state_core = 587
+				add_state_core = 588
+				add_state_core = 589
+				add_state_core = 590
+				add_state_core = 591
+				add_state_core = 592
+				add_state_core = 593
+				add_state_core = 594
+				add_state_core = 595
+				add_state_core = 596
+				add_state_core = 597
+				add_state_core = 598
+				add_state_core = 599
+				add_state_core = 600
+				add_state_core = 601
+				add_state_core = 602
+				add_state_core = 603
+				add_state_core = 604
+				add_state_core = 605
+				add_state_core = 606
+				add_state_core = 607
+				add_state_core = 608
+				add_state_core = 609
+				add_state_core = 610
+				add_state_core = 611
+				add_state_core = 612
+				add_state_core = 613
+				add_state_core = 614
+				add_state_core = 615
+				add_state_core = 616
+				add_state_core = 617
+				add_state_core = 618
+				add_state_core = 619
+				add_state_core = 620
+				add_state_core = 621
+				add_state_core = 622
+				add_state_core = 623
+				add_state_core = 624
+				add_state_core = 625
+				add_state_core = 626
+				add_state_core = 627
+				add_state_core = 628
+				add_state_core = 629
+				add_state_core = 630
+				add_state_core = 631
+				add_state_core = 632
+				add_state_core = 633
+				add_state_core = 634
+				add_state_core = 635
+				add_state_core = 636
+				add_state_core = 637
+				add_state_core = 638
+				add_state_core = 639
+				add_state_core = 640
+				add_state_core = 641
+				add_state_core = 642
+				add_state_core = 643
+				add_state_core = 644
+				add_state_core = 645
+				add_state_core = 646
+				add_state_core = 647
+				add_state_core = 648
+				add_state_core = 649
+				add_state_core = 650
+				add_state_core = 651
+				add_state_core = 652
+				add_state_core = 653
+				add_state_core = 654
+				add_state_core = 655
+				add_state_core = 656
+				add_state_core = 657
+				add_state_core = 658
+				add_state_core = 659
+				add_state_core = 660
+				add_state_core = 661
+				add_state_core = 662
+				add_state_core = 663
+				add_state_core = 664
+				add_state_core = 665
+				add_state_core = 666
+				add_state_core = 667
+				add_state_core = 668
+				add_state_core = 669
+				add_state_core = 670
+				add_state_core = 671
+				add_state_core = 672
+				add_state_core = 673
+				add_state_core = 674
+				add_state_core = 675
+				add_state_core = 676
+				add_state_core = 677
+				add_state_core = 678
+				add_state_core = 679
+				add_state_core = 680
+				add_state_core = 681
+				add_state_core = 682
+				add_state_core = 683
+				add_state_core = 684
+				add_state_core = 685
+				add_state_core = 686
+				add_state_core = 687
+				add_state_core = 688
+				add_state_core = 689
+				add_state_core = 690
+				add_state_core = 691
+				add_state_core = 692
+				add_state_core = 693
+				add_state_core = 694
+				add_state_core = 695
+				add_state_core = 696
+				add_state_core = 697
+				add_state_core = 698
+				add_state_core = 699
+				add_state_core = 700
+				add_state_core = 701
+				add_state_core = 702
+				add_state_core = 703
+				add_state_core = 704
+				add_state_core = 705
+				add_state_core = 706
+				add_state_core = 707
+				add_state_core = 708
+				add_state_core = 709
+				add_state_core = 710
+				add_state_core = 711
+				add_state_core = 712
+				add_state_core = 713
+				add_state_core = 714
+				add_state_core = 715
+				add_state_core = 716
+				add_state_core = 717
+				add_state_core = 718
+				add_state_core = 719
+				add_state_core = 720
+				add_state_core = 721
+				add_state_core = 722
+				add_state_core = 723
+				add_state_core = 724
+				add_state_core = 725
+				add_state_core = 726
+				add_state_core = 727
+				add_state_core = 728
+				add_state_core = 729
+				add_state_core = 730
+				add_state_core = 731
+				add_state_core = 732
+				add_state_core = 733
+				add_state_core = 734
+				add_state_core = 735
+				add_state_core = 736
+				add_state_core = 737
+				add_state_core = 738
+				add_state_core = 739
+				add_state_core = 740
+				add_state_core = 741
+				add_state_core = 742
+				add_state_core = 743
+				add_state_core = 744
+				add_state_core = 745
+				add_state_core = 746
+				add_state_core = 747
+				add_state_core = 748
+				add_state_core = 749
+				add_state_core = 750
+				add_state_core = 751
+				add_state_core = 752
+				add_state_core = 753
+				add_state_core = 754
+				add_state_core = 755
+				add_state_core = 756
+				add_state_core = 757
+				add_state_core = 758
+				add_state_core = 759
+				add_state_core = 760
+				add_state_core = 761
+				add_state_core = 762
+				add_state_core = 763
+				add_state_core = 764
+				add_state_core = 765
+				add_state_core = 766
+				add_state_core = 767
+				add_state_core = 768
+				add_state_core = 769
+				add_state_core = 770
+				add_state_core = 771
+				add_state_core = 772
+				add_state_core = 773
+				add_state_core = 774
+				add_state_core = 775
+				add_state_core = 776
+				add_state_core = 777
+				add_state_core = 778
+				add_state_core = 779
+				add_state_core = 780
+				add_state_core = 781
+				add_state_core = 782
+				add_state_core = 783
+				add_state_core = 784
+				add_state_core = 785
+				add_state_core = 786
+				add_state_core = 787
+				add_state_core = 788
+				add_state_core = 789
+				add_state_core = 790
+				add_state_core = 791
+				add_state_core = 792
+				add_state_core = 793
+				add_state_core = 794
+				add_state_core = 795
+				add_state_core = 796
+				add_state_core = 797
+				add_state_core = 798
+				add_state_core = 799
+				add_state_core = 800
+				add_state_core = 801
+				add_state_core = 802
+				add_state_core = 803
+				add_state_core = 804
+				add_state_core = 805
+				add_state_core = 806
+				add_state_core = 807
+				add_state_core = 808
+				add_state_core = 809
+				add_state_core = 810
+				add_state_core = 811
+				add_state_core = 812
+				add_state_core = 813
+				add_state_core = 814
+				add_state_core = 815
+				add_state_core = 816
+				add_state_core = 817
+				add_state_core = 818
+				add_state_core = 819
+				add_state_core = 820
+				add_state_core = 821
+				add_state_core = 822
+				add_state_core = 823
+				add_state_core = 824
+				add_state_core = 825
+				add_state_core = 826
+				add_state_core = 827
+				add_state_core = 828
+				add_state_core = 829
+				add_state_core = 830
+				add_state_core = 831
+				add_state_core = 832
+				add_state_core = 833
+				add_state_core = 834
+				add_state_core = 835
+				add_state_core = 836
+				add_state_core = 837
+				add_state_core = 838
+				add_state_core = 839
+				add_state_core = 840
+				add_state_core = 841
+				add_state_core = 842
+				add_state_core = 843
+				add_state_core = 844
+				add_state_core = 845
+				add_state_core = 846
+				add_state_core = 847
+				add_state_core = 848
+				add_state_core = 849
+				add_state_core = 850
+				add_state_core = 851
+				add_state_core = 852
+				add_state_core = 853
+				add_state_core = 854
+				add_state_core = 855
+				add_state_core = 856
+				add_state_core = 857
+				add_state_core = 858
+				add_state_core = 859
+				add_state_core = 860
+				add_state_core = 861
+				add_state_core = 862
+				add_state_core = 863
+				add_state_core = 864
+				add_state_core = 865
+				add_state_core = 866
+				add_state_core = 867
+				add_state_core = 868
+				add_state_core = 869
+				add_state_core = 870
+				add_state_core = 871
+				add_state_core = 872
+				add_state_core = 873
+				add_state_core = 874
+				add_state_core = 875
+				add_state_core = 876
+				add_state_core = 877
+				add_state_core = 878
+				add_state_core = 879
+				add_state_core = 880
+				add_state_core = 881
+				add_state_core = 882
+				add_state_core = 883
+				add_state_core = 884
+				add_state_core = 885
+				add_state_core = 886
+				add_state_core = 887
+				add_state_core = 888
+				add_state_core = 889
+				add_state_core = 890
+				add_state_core = 891
+				add_state_core = 892
+				add_state_core = 893
+				add_state_core = 894
+				add_state_core = 895
+				add_state_core = 896
+				add_state_core = 897
+				add_state_core = 898
+				add_state_core = 899
+				add_state_core = 900
+				add_state_core = 901
+				add_state_core = 902
+				add_state_core = 903
+				add_state_core = 904
+				add_state_core = 905
+				add_state_core = 906
+				add_state_core = 907
+				add_state_core = 908
+				add_state_core = 909
+				add_state_core = 910
+				add_state_core = 911
+				add_state_core = 912
+				add_state_core = 913
+				add_state_core = 914
+				add_state_core = 915
+				add_state_core = 916
+				add_state_core = 917
+				add_state_core = 918
+				add_state_core = 919
+				add_state_core = 920
+				add_state_core = 921
+				add_state_core = 922
+				add_state_core = 923
+				add_state_core = 924
+				add_state_core = 925
+				add_state_core = 926
+				add_state_core = 927
+				add_state_core = 928
+				add_state_core = 929
+				add_state_core = 930
+				add_state_core = 931
+				add_state_core = 932
+				add_state_core = 933
+				add_state_core = 934
+				add_state_core = 935
+				add_state_core = 936
+				add_state_core = 937
+				add_state_core = 938
+				add_state_core = 939
+				add_state_core = 940
+				add_state_core = 941
+				add_state_core = 942
+				add_state_core = 943
+				add_state_core = 944
+				add_state_core = 945
+				add_state_core = 946
+				add_state_core = 947
+				add_state_core = 948
+				add_state_core = 949
+				add_state_core = 950
+				add_state_core = 951
+				add_state_core = 952
+				add_state_core = 953
+				add_state_core = 954
+				add_state_core = 955
+				add_state_core = 956
+				add_state_core = 957
+				add_state_core = 958
+				add_state_core = 959
+				add_state_core = 960
+				add_state_core = 961
+				add_state_core = 962
+				add_state_core = 963
+				add_state_core = 964
+				add_state_core = 965
+				add_state_core = 966
+				add_state_core = 967
+				add_state_core = 968
+				add_state_core = 969
+				add_state_core = 970
+				add_state_core = 971
+				add_state_core = 972
+				add_state_core = 973
+				add_state_core = 974
+				add_state_core = 975
+				add_state_core = 976
+				add_state_core = 977
+				add_state_core = 978
+				add_state_core = 979
+				add_state_core = 980
+				add_state_core = 981
+			}
+		}
+	}
+	
+	focus = {
+		id = SHC_shocker_machine
+		icon = GFX_goal_rksplus_shocker_machine
+		prerequisite = { focus = SHC_daishocker }
+		
+		x = -6
+		y = 1
+		relative_position_id = SHC_daishocker
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			country_event = rksshocker.16
+		}
+	}
+	
+	focus = {
+		id = SHC_showa_allies
+		icon = GFX_goal_rksplus_shocker_showa
+		prerequisite = { focus = SHC_shocker_machine }
+		
+		x = 0
+		y = 1
+		relative_position_id = SHC_shocker_machine
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+		
+			country_event = rksshocker.8
+
+		}
+	}
+	
+	focus = {
+		id = SHC_starfish_hitler
+		icon = GFX_goal_rksplus_shocker_starfishitler
+		prerequisite = { focus = SHC_shocker_machine }
+		
+		x = 2
+		y = 1
+		relative_position_id = SHC_shocker_machine
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			country_event = rksshocker.9
+
+		}
+	}
+	
+	
+	focus = {
+		id = SHC_allies_gurongi
+		icon = GFX_goal_rksplus_shocker_gurongi
+		prerequisite = { focus = SHC_showa_allies }
+		
+		x = -4
+		y = 1
+		relative_position_id = SHC_showa_allies
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			country_event = rksshocker.10
+		}
+	}
+	
+	focus = {
+		id = SHC_allies_orphnoch
+		icon = GFX_goal_rksplus_shocker_orphnoch
+		prerequisite = { focus = SHC_showa_allies }
+		
+		x = -2
+		y = 1
+		relative_position_id = SHC_showa_allies
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			country_event = rksshocker.11
+		}
+	}
+	
+	focus = {
+		id = SHC_allies_undead
+		icon = GFX_goal_rksplus_shocker_undead
+		prerequisite = { focus = SHC_showa_allies }
+		
+		x = 0
+		y = 1
+		relative_position_id = SHC_showa_allies
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			country_event = rksshocker.12
+		}
+	}
+	
+	focus = {
+		id = SHC_allies_fangire
+		icon = GFX_goal_rksplus_shocker_fangire
+		prerequisite = { focus = SHC_showa_allies }
+		
+		x = 2
+		y = 1
+		relative_position_id = SHC_showa_allies
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			country_event = rksshocker.13
+		}
+	}
+	
+	focus = {
+		id = SHC_allies_dopant
+		icon = GFX_goal_rksplus_shocker_dopant
+		prerequisite = { focus = SHC_showa_allies }
+		
+		x = 4
+		y = 1
+		relative_position_id = SHC_showa_allies
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			country_event = rksshocker.14
+		}
+	}
+	
+	focus = {
+		id = SHC_allies_greeed
+		icon = GFX_goal_rksplus_shocker_greeed
+		prerequisite = { focus = SHC_allies_gurongi }
+		prerequisite = { focus = SHC_allies_orphnoch }
+		prerequisite = { focus = SHC_allies_undead }
+		prerequisite = { focus = SHC_allies_fangire }
+		prerequisite = { focus = SHC_allies_dopant }
+		
+		x = 0
+		y = 2
+		relative_position_id = SHC_showa_allies
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			country_event = rksshocker.15
+		}
+	}
+}

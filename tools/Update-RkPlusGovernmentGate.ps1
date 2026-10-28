@@ -48,6 +48,10 @@ function Write-IfChanged {
 
 foreach ($relativePath in $wholeFileTargets) {
     $path = Join-Path $ModRoot $relativePath
+    $sourcePath = Join-Path (Join-Path $ModRoot 'rkplus-source') $relativePath
+    if (Test-Path -LiteralPath $sourcePath) {
+        $path = $sourcePath
+    }
     $originalText = [System.IO.File]::ReadAllText($path, $utf8WithoutBom)
     $replacementCount = ([regex]::Matches($originalText, [regex]::Escape($fascismGate))).Count
     $updatedText = $originalText.Replace($fascismGate, $sharedGate)

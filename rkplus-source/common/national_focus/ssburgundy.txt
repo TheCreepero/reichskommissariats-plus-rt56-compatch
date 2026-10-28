@@ -1,0 +1,3936 @@
+### search_filters = {FOCUS_FILTER_POLITICAL}
+### search_filters = {FOCUS_FILTER_RESEARCH}
+### search_filters = {FOCUS_FILTER_INDUSTRY}
+### search_filters = {FOCUS_FILTER_STABILITY}
+### search_filters = {FOCUS_FILTER_WAR_SUPPORT}
+### search_filters = {FOCUS_FILTER_MANPOWER}
+### search_filters = {FOCUS_FILTER_ANNEXATION}
+
+focus_tree = {
+	id = ssburgundy_tree
+	
+	country = {
+		factor = 0
+		modifier = {
+			add = 10
+			tag = OBG
+		}
+	}
+
+	default = no
+
+	continuous_focus_position = { x = 1950 y = 100 }  
+	initial_show_position = {
+		x = 15
+		y = 0
+	}
+
+	focus = {
+		id = OBG_burgundy_summary
+		icon = GFX_goal_generic_position_armies
+		#prerequisite = { focus = }
+
+		x = 8
+		y = 0
+		#relative_position_id = 
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_political_power = 15
+			country_event = rksburgundynew.1
+		}
+	}
+	
+	focus = {
+		id = OBG_political_situation
+		icon = GFX_focus_generic_self_management
+		prerequisite = { focus = OBG_burgundy_summary }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_burgundy_summary
+		cost = 1
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			country_event = rksburgundynew.2
+		}
+	}
+	
+	focus = {
+		id = OBG_ss_coup
+		icon = GFX_focus_generic_conspiracy
+		prerequisite = { focus = OBG_political_situation }
+
+		x = -4
+		y = 1
+		relative_position_id = OBG_political_situation
+		mutually_exclusive = { focus = OBG_himmler_dominance }
+		cost = 5
+		ai_will_do = {
+			factor = 2
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {		
+			custom_effect_tooltip = ssburgundy_sscoup_tt
+		
+			hidden_effect = {
+				retire_character = OBG_Leader
+				
+				create_country_leader = {
+					name = "Schutzstaffel Opposition"
+					desc = ""
+					picture = "gfx/leaders/GER/Portrait_Burgundy_Schutzstaffel.dds"
+					expire = "1965.1.1"
+					ideology = nazism
+					traits = { }
+				}
+				
+				set_country_flag = OBG_ss_coup_flag
+				
+				country_event = rksburgundynew.3
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_operation_cleanup
+		icon = GFX_focus_generic_strike_at_democracy1
+		prerequisite = { focus = OBG_ss_coup }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_ss_coup
+		cost = 4
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_political_power = 50
+			add_stability = 0.1
+		}
+	}
+	
+	focus = {
+		id = OBG_with_germany
+		icon = GFX_focus_chi_mission_to_germany
+		prerequisite = { focus = OBG_operation_cleanup }
+
+		x = 2
+		y = 1
+		relative_position_id = OBG_operation_cleanup
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		bypass = {
+			NOT = { country_exists = GER }
+		}
+		available = {
+			country_exists = GER
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			GER = {
+				add_opinion_modifier = { 
+					target = ROOT
+					modifier = OBG_germany_reconciliation
+				}
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_loyalty_germany
+		icon = GFX_focus_generic_concessions
+		prerequisite = { focus = OBG_with_germany }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_with_germany
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			country_exists = GER
+		}
+		
+		bypass = {
+			NOT = { country_exists = GER }
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			GER = {
+				country_event = rksburgundynew.4
+				
+				add_opinion_modifier = { 
+					target = ROOT
+					modifier = OBG_germany_loyalty
+				}
+			}
+		
+			add_political_power = -25
+		}
+	}
+	
+	focus = {
+		id = OBG_eliminate_french
+		icon = GFX_focus_attack_france
+		prerequisite = { focus = OBG_operation_cleanup }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_operation_cleanup
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_ideas = OBG_french_culture
+			
+			add_political_power = 25
+		}
+	}
+	
+	focus = {
+		id = OBG_germanisation_program
+		icon = GFX_focus_ITA_generic_fascist_workers
+		prerequisite = { focus = OBG_eliminate_french }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_eliminate_french
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			swap_ideas =  {
+			    remove_idea = OBG_french_culture
+			    add_idea = OBG_germanisation_program_idea
+		    }
+		}
+	}
+	
+	focus = {
+		id = OBG_ss_youth
+		icon = GFX_goal_support_fascism
+		prerequisite = { focus = OBG_operation_cleanup }
+
+		x = -2
+		y = 1
+		relative_position_id = OBG_operation_cleanup
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_political_power = 25
+			add_ideas = OBG_ss_youth_idea
+		}
+	}
+	
+	focus = {
+		id = OBG_ss_propaganda
+		icon = GFX_goal_generic_propaganda
+		prerequisite = { focus = OBG_ss_youth }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_ss_youth
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			swap_ideas =  {
+			    remove_idea = OBG_ss_youth_idea
+			    add_idea = OBG_ss_youth_idea_two
+		    }
+		}
+	}
+	
+	focus = {
+		id = OBG_ss_path
+		icon = GFX_goal_generic_demand_territory
+		prerequisite = { focus = OBG_ss_propaganda }
+		prerequisite = { focus = OBG_germanisation_program }
+		prerequisite = { focus = OBG_loyalty_germany }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_germanisation_program
+		cost = 2
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			country_event = rksburgundynew.5
+		}
+	}
+	
+	focus = {
+		id = OBG_autonomous_ss_state
+		icon = GFX_goal_generic_defence
+		prerequisite = { focus = OBG_ss_path }
+		mutually_exclusive = { focus = OBG_german_aligned_ss_state }
+		mutually_exclusive = { focus = OBG_neutral_ss_state }
+
+
+		x = -2
+		y = 1
+		relative_position_id = OBG_ss_path
+		cost = 1
+		ai_will_do = {
+			factor = 0
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			custom_effect_tooltip = ssburgundy_autonomous_tt
+		}
+	}
+	
+	focus = {
+		id = OBG_neutral_ss_state
+		icon = GFX_goal_generic_neutrality_focus
+		prerequisite = { focus = OBG_ss_path }
+		mutually_exclusive = { focus = OBG_autonomous_ss_state }
+		mutually_exclusive = { focus = OBG_german_aligned_ss_state }
+
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_ss_path
+		cost = 1
+		ai_will_do = {
+			factor = 0
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			custom_effect_tooltip = ssburgundy_neutral_tt
+		}
+	}
+	
+	focus = {
+		id = OBG_german_aligned_ss_state
+		icon = GFX_focus_ger_reichskommisariats
+		prerequisite = { focus = OBG_ss_path }
+		mutually_exclusive = { focus = OBG_autonomous_ss_state }
+		mutually_exclusive = { focus = OBG_neutral_ss_state }
+
+
+		x = 2
+		y = 1
+		relative_position_id = OBG_ss_path
+		cost = 1
+		ai_will_do = {
+			factor = 0
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			custom_effect_tooltip = ssburgundy_german_aligned_tt
+		}
+	}
+	
+	focus = {
+		id = OBG_himmler_dominance
+		icon = GFX_focus_generic_military_dictatorship
+		prerequisite = { focus = OBG_political_situation }
+
+		x = 8
+		y = 1
+		relative_position_id = OBG_political_situation
+		mutually_exclusive = { focus = OBG_ss_coup }
+		cost = 5
+		ai_will_do = {
+			factor = 8
+		}
+		available = {
+		}
+		
+		search_filters = {}
+
+		completion_reward = {
+			custom_effect_tooltip = ssburgundy_himmlerdominance_tt
+			
+			hidden_effect = {
+			
+				add_country_leader_trait = dictator
+			
+				country_event = rksburgundynew.6
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_economic_focus
+		icon = GFX_goal_generic_production2
+		prerequisite = { focus = OBG_ss_coup focus = OBG_himmler_dominance }
+
+		x = 2
+		y = 2
+		relative_position_id = OBG_political_situation
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_tech_bonus = {
+				name = GER_four_year_plan
+				bonus = 1.0
+				uses = 2
+				category = industry
+			}
+			
+			if = {
+				limit = {
+					NOT = { has_idea = war_economy }
+					NOT = { has_idea = tot_economic_mobilisation }
+				}
+				add_ideas = war_economy
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_research_slot_one
+		icon = GFX_focus_research
+		prerequisite = { focus = OBG_economic_focus }
+
+		x = 2
+		y = 1
+		relative_position_id = OBG_economic_focus
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_research_slot = 1
+		}
+	}
+	
+	focus = {
+		id = OBG_construction_efforts
+		icon = GFX_goal_generic_production
+		prerequisite = { focus = OBG_economic_focus }
+
+		x = -2
+		y = 1
+		relative_position_id = OBG_economic_focus
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_tech_bonus = {
+				name = OBG_construction_tech
+				bonus = 1.0
+				uses = 2
+				technology = basic_machine_tools
+				technology = improved_machine_tools
+				technology = advanced_machine_tools
+				technology = assembly_line_production
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_implement_slavery
+		icon = GFX_goal_generic_forceful_treaty
+		prerequisite = { focus = OBG_economic_focus }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_economic_focus
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_political_power = 25
+			add_ideas = OBG_serfdom
+		}
+	}
+	
+	focus = {
+		id = OBG_civfactories_one
+		icon = GFX_goal_generic_construct_civ_factory
+		prerequisite = { focus = OBG_implement_slavery }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_implement_slavery
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			has_full_control_of_state = 18
+		}
+		
+		available_if_capitulated = no
+
+		search_filters = {}
+
+		completion_reward = {
+			random_owned_controlled_state = {
+				limit = {
+					free_building_slots = {
+						building = industrial_complex
+						size > 1
+						include_locked = yes
+					}
+				}
+				add_extra_state_shared_building_slots = 1
+				add_building_construction = {
+					type = industrial_complex
+					level = 1
+					instant_build = yes
+				}
+			}
+			
+			random_owned_controlled_state = {
+				limit = {
+					free_building_slots = {
+						building = industrial_complex
+						size > 1
+						include_locked = yes
+					}
+				}
+				add_extra_state_shared_building_slots = 1
+				add_building_construction = {
+					type = industrial_complex
+					level = 1
+					instant_build = yes
+				}
+			}
+		}
+	}
+	
+	
+	focus = {
+		id = OBG_infrastructure_works
+		icon = GFX_goal_generic_construct_infrastructure
+		prerequisite = { focus = OBG_implement_slavery }
+
+		x = -2
+		y = 1
+		relative_position_id = OBG_implement_slavery
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			OR = {
+				has_full_control_of_state = 18
+				has_full_control_of_state = 17
+			}
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			18 = {
+				if = {
+					limit = { is_controlled_by = ROOT }
+					add_building_construction = {
+						type = infrastructure
+						level = 1
+						instant_build = yes
+					}
+				}
+			}
+			
+			17 = {
+				if = {
+					limit = { is_controlled_by = ROOT }
+					add_building_construction = {
+						type = infrastructure
+						level = 1
+						instant_build = yes
+					}
+				}
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_investment_germany
+		icon = GFX_goal_generic_construct_civ_factory
+		prerequisite = { focus = OBG_infrastructure_works }
+		prerequisite = { focus = OBG_loyalty_germany }
+
+		x = -1
+		y = 1
+		relative_position_id = OBG_infrastructure_works
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			country_exists = GER
+		}
+		
+		bypass = {
+			NOT = { country_exists = GER }
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			random_owned_controlled_state = {
+				limit = {
+					free_building_slots = {
+						building = industrial_complex
+						size > 1
+						include_locked = yes
+					}
+				}
+				add_extra_state_shared_building_slots = 2
+				add_building_construction = {
+					type = industrial_complex
+					level = 2
+					instant_build = yes
+				}
+			}
+			add_ideas = { OBG_invite_foreign_investors }
+		}
+	}
+	
+	focus = {
+		id = OBG_resource_exploits
+		icon = GFX_focus_generic_steel
+		prerequisite = { focus = OBG_infrastructure_works }
+		prerequisite = { focus = OBG_civfactories_one }
+
+		x = 1
+		y = 1
+		relative_position_id = OBG_infrastructure_works
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			has_full_control_of_state = 17
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_tech_bonus = {
+				name = OBG_excavation_tech
+				bonus = 1.0
+				uses = 2
+				technology = excavation1
+				technology = excavation2
+				technology = excavation3
+				technology = excavation4
+				technology = excavation5
+			}
+			
+			17 = {
+				add_resource = {
+					type = steel
+					amount = 16
+					state = 17
+				}
+			}
+			
+			17 = {
+				add_resource = {
+					type = aluminium
+					amount = 8
+					state = 17
+				}
+			}
+			
+			swap_ideas = {
+				add_idea = OBG_serfdom_two
+				remove_idea = OBG_serfdom
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_excavation_efforts
+		icon = GFX_goal_generic_oil_refinery
+		prerequisite = { focus = OBG_civfactories_one }
+		prerequisite = { focus = OBG_milfactories_one }
+
+		x = 1
+		y = 1
+		relative_position_id = OBG_civfactories_one
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			has_full_control_of_state = 18
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			
+			add_tech_bonus = {
+				name = GER_coal_liquidization
+				bonus = 3.0
+				uses = 1
+				category = synth_resources
+			}
+			if = {
+				limit = {
+					has_full_control_of_state = 18
+				}
+				18 = {
+					add_extra_state_shared_building_slots = 1
+					add_building_construction = {
+						type = synthetic_refinery
+						level = 1
+						instant_build = yes
+					}
+				}
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_milfactories_one
+		icon = GFX_goal_generic_construct_mil_factory
+		prerequisite = { focus = OBG_implement_slavery }
+
+		x = 2
+		y = 1
+		relative_position_id = OBG_implement_slavery
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			has_full_control_of_state = 17
+			has_full_control_of_state = 18
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			random_owned_controlled_state = {
+				limit = {
+					free_building_slots = {
+						building = arms_factory
+						size > 1
+						include_locked = yes
+					}
+				}
+				add_extra_state_shared_building_slots = 1
+				add_building_construction = {
+					type = arms_factory
+					level = 1
+					instant_build = yes
+				}
+			}
+			
+			random_owned_controlled_state = {
+				limit = {
+					free_building_slots = {
+						building = arms_factory
+						size > 1
+						include_locked = yes
+					}
+				}
+				add_extra_state_shared_building_slots = 1
+				add_building_construction = {
+					type = arms_factory
+					level = 1
+					instant_build = yes
+				}
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_military_investment
+		icon = GFX_goal_generic_construct_mil_factory
+		prerequisite = { focus = OBG_milfactories_one }
+		prerequisite = { focus = OBG_militarism_focus }
+
+		x = 1
+		y = 1
+		relative_position_id = OBG_milfactories_one
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			has_full_control_of_state = 17
+			has_full_control_of_state = 18
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			random_owned_controlled_state = {
+				limit = {
+					free_building_slots = {
+						building = arms_factory
+						size > 1
+						include_locked = yes
+					}
+				}
+				add_extra_state_shared_building_slots = 2
+				add_building_construction = {
+					type = arms_factory
+					level = 2
+					instant_build = yes
+				}
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_civfactories_two
+		icon = GFX_goal_generic_construct_civ_factory
+		prerequisite = { focus = OBG_resource_exploits }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_resource_exploits
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			has_full_control_of_state = 17
+			has_full_control_of_state = 18
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			random_owned_controlled_state = {
+				limit = {
+					free_building_slots = {
+						building = industrial_complex
+						size > 1
+						include_locked = yes
+					}
+				}
+				add_extra_state_shared_building_slots = 2
+				add_building_construction = {
+					type = industrial_complex
+					level = 2
+					instant_build = yes
+				}
+			}
+			
+			random_owned_controlled_state = {
+				limit = {
+					free_building_slots = {
+						building = industrial_complex
+						size > 1
+						include_locked = yes
+					}
+				}
+				add_extra_state_shared_building_slots = 1
+				add_building_construction = {
+					type = industrial_complex
+					level = 1
+					instant_build = yes
+				}
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_milfactories_two
+		icon = GFX_goal_generic_construct_mil_factory
+		prerequisite = { focus = OBG_excavation_efforts }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_excavation_efforts
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			has_full_control_of_state = 17
+			has_full_control_of_state = 18
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			random_owned_controlled_state = {
+				limit = {
+					free_building_slots = {
+						building = arms_factory
+						size > 1
+						include_locked = yes
+					}
+				}
+				add_extra_state_shared_building_slots = 2
+				add_building_construction = {
+					type = arms_factory
+					level = 2
+					instant_build = yes
+				}
+			}
+			
+			random_owned_controlled_state = {
+				limit = {
+					free_building_slots = {
+						building = arms_factory
+						size > 1
+						include_locked = yes
+					}
+				}
+				add_extra_state_shared_building_slots = 1
+				add_building_construction = {
+					type = arms_factory
+					level = 1
+					instant_build = yes
+				}
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_obedience_above_all
+		icon = GFX_goal_generic_political_pressure
+		prerequisite = { focus = OBG_himmler_dominance }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_himmler_dominance
+		cost = 4
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			custom_effect_tooltip = ssburgundy_loyaltycheck_tt
+			hidden_effect = {
+				country_event = rksburgundynew.7
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_policy_focus
+		icon = GFX_focus_generic_self_management
+		prerequisite = { focus = OBG_obedience_above_all }
+
+		x = -2
+		y = 1
+		relative_position_id = OBG_obedience_above_all
+		cost = 3
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_political_power = 25
+			
+		}
+	}
+	
+	focus = {
+		id = OBG_militarism_focus
+		icon = GFX_focus_secret_rearmament
+		prerequisite = { focus = OBG_policy_focus }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_policy_focus
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_political_power = 25
+			add_ideas = OBG_militarism_idea
+		}
+	}
+	
+	focus = {
+		id = OBG_all_or_nothing
+		icon = GFX_goal_generic_attack_allies
+		prerequisite = { focus = OBG_militarism_focus }
+		prerequisite = { focus = OBG_brainwashed_youth }
+
+		x = 0
+		y = 2
+		relative_position_id = OBG_militarism_focus
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_political_power = 50
+			
+			swap_ideas = {
+				add_idea = OBG_victory_or_death_idea
+				remove_idea = OBG_militarism_idea
+			}
+			
+			hidden_effect = {
+				remove_ideas = OBG_education_idea_two
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_education_indoctrination
+		icon = GFX_goal_generic_position_armies
+		prerequisite = { focus = OBG_policy_focus }
+
+		x = 2
+		y = 1
+		relative_position_id = OBG_policy_focus
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_ideas = OBG_education_idea
+		}
+	}
+	
+	focus = {
+		id = OBG_brainwashed_youth
+		icon = GFX_goal_support_fascism
+		prerequisite = { focus = OBG_education_indoctrination }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_education_indoctrination
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			swap_ideas = {
+				add_idea = OBG_education_idea_two
+				remove_idea = OBG_education_idea
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_eradication_focus
+		icon = GFX_goal_generic_forceful_treaty
+		prerequisite = { focus = OBG_policy_focus focus = OBG_political_focus }
+
+		x = 4
+		y = 1
+		relative_position_id = OBG_policy_focus
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			has_government = fascism
+			has_army_manpower = { size > 149999 }
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_timed_idea = { idea = OBG_eradication_idea days = 90 }
+		}
+	}
+	
+	focus = {
+		id = OBG_assimilation_focus
+		icon = GFX_goal_generic_national_unity
+		prerequisite = { focus = OBG_eradication_focus }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_eradication_focus
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			has_government = fascism
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_manpower = 10000
+			add_stability = 0.05
+		
+			add_ideas = OBG_manpower_one
+			
+		}
+	}
+	
+	focus = {
+		id = OBG_new_identity
+		icon = GFX_focus_CZE_german_puppet
+		prerequisite = { focus = OBG_assimilation_focus }
+
+		x = -1
+		y = 1
+		relative_position_id = OBG_assimilation_focus
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			fascism > 0.75
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_political_power = 50
+			country_event = rksburgundynew.8
+		}
+	}
+	
+	focus = {
+		id = OBG_new_loyalty
+		icon = GFX_goal_anschluss
+		prerequisite = { focus = OBG_assimilation_focus focus = OBG_burgundian_propaganda }
+
+		x = 1
+		y = 1
+		relative_position_id = OBG_assimilation_focus
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			fascism > 0.75
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_stability = 0.05
+			country_event = rksburgundynew.9
+		}
+	}
+	
+	focus = {
+		id = OBG_political_focus
+		icon = GFX_goal_generic_demand_territory
+		prerequisite = { focus = OBG_obedience_above_all }
+
+		x = 5
+		y = 1
+		relative_position_id = OBG_obedience_above_all
+		cost = 3
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_political_power = 25
+		}
+	}
+	
+	focus = {
+		id = OBG_strengthen_party
+		icon = GFX_focus_generic_spread_fascism
+		prerequisite = { focus = OBG_political_focus }
+
+		x = -1
+		y = 1
+		relative_position_id = OBG_political_focus
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_political_power = 25
+			add_popularity = {
+                ideology = fascism
+                popularity = 0.1
+            }
+		}
+	}
+	
+	focus = {
+		id = OBG_burgundian_propaganda
+		icon = GFX_focus_generic_fascist_propaganda
+		prerequisite = { focus = OBG_strengthen_party }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_strengthen_party
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_ideas = OBG_propaganda_idea
+		}
+	}
+	
+	focus = {
+		id = OBG_consolidate_power
+		icon = GFX_goal_generic_political_pressure
+		prerequisite = { focus = OBG_political_focus }
+
+		x = 1
+		y = 1
+		relative_position_id = OBG_political_focus
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_political_power = 25
+			add_stability = 0.05
+		}
+	}
+	
+	focus = {
+		id = OBG_burgundian_prophet
+		icon = GFX_focus_generic_support_the_left_right
+		prerequisite = { focus = OBG_consolidate_power }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_consolidate_power
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			fascism > 0.75
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_ideas = OBG_cult_of_personality
+		}
+	}
+	
+	focus = {
+		id = OBG_true_purpose
+		icon = GFX_focus_ger_reichskommisariats
+		prerequisite = { focus = OBG_burgundian_propaganda focus = OBG_burgundian_prophet }
+
+		x = -1
+		y = 1
+		relative_position_id = OBG_burgundian_prophet
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_political_power = 25
+		}
+	}
+	
+	focus = {
+		id = OBG_black_sun
+		icon = GFX_focus_generic_strike_at_democracy1
+		prerequisite = { focus = OBG_true_purpose }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_true_purpose
+		cost = 6.5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			country_event = rksburgundynew.10
+		}
+	}
+	
+	focus = {
+		id = OBG_relationship_focus
+		icon = GFX_goal_generic_intelligence_exchange
+		prerequisite = { focus = OBG_obedience_above_all }
+
+		x = 9
+		y = 1
+		relative_position_id = OBG_obedience_above_all
+		cost = 4
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_political_power = 25
+		}
+	}
+	
+	focus = {
+		id = OBG_germany_relationship
+		icon = GFX_focus_chi_mission_to_germany
+		prerequisite = { focus = OBG_relationship_focus }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_relationship_focus
+		cost = 2
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			country_event = rksburgundynew.11
+		}
+	}
+	
+	focus = {
+		id = OBG_ourown_focus
+		icon = GFX_goal_generic_political_pressure
+		prerequisite = { focus = OBG_germany_relationship }
+
+		x = -1
+		y = 1
+		relative_position_id = OBG_germany_relationship
+		mutually_exclusive = { focus = OBG_playsafe_focus }
+		
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_political_power = 50
+		}
+	}
+	
+	focus = {
+		id = OBG_centralize_control
+		icon = GFX_focus_generic_military_mission
+		prerequisite = { focus = OBG_ourown_focus }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_ourown_focus
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_war_support = 0.05
+			add_stability = 0.05
+			add_command_power = 50
+			army_experience = 30
+			
+		}
+	}
+	
+	focus = {
+		id = OBG_new_organisation
+		icon = GFX_goal_generic_territory_or_war
+		prerequisite = { focus = OBG_centralize_control }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_centralize_control
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_ideas = OBG_new_organisation_idea
+		}
+	}
+	
+	focus = {
+		id = OBG_playsafe_focus
+		icon = GFX_goal_molotov_ribbentrop_pact
+		prerequisite = { focus = OBG_germany_relationship }
+		mutually_exclusive = { focus = OBG_ourown_focus }
+
+		x = 1
+		y = 1
+		relative_position_id = OBG_germany_relationship
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_political_power = 25
+		}
+	}
+	
+	focus = {
+		id = OBG_request_investment
+		icon = GFX_goal_generic_construction
+		prerequisite = { focus = OBG_playsafe_focus }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_playsafe_focus
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			has_opinion = {
+				target = GER
+				value > 49
+			}
+			
+			country_exists = GER
+		}
+
+		bypass = {
+			NOT = { country_exists = GER }
+			has_war_with = GER
+		}
+		
+		search_filters = {}
+
+		completion_reward = {
+			GER = {
+				country_event = rksburgundynew.12
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_industrial_overhaul
+		icon = GFX_goal_generic_consumer_goods
+		prerequisite = { focus = OBG_request_investment }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_request_investment
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			has_full_control_of_state = 17
+			has_full_control_of_state = 18
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_ideas = OBG_industrial_overhaul_idea
+			
+			random_owned_controlled_state = {
+				limit = {
+					free_building_slots = {
+						building = industrial_complex
+						size > 1
+						include_locked = yes
+					}
+				}
+				add_extra_state_shared_building_slots = 1
+				add_building_construction = {
+					type = industrial_complex
+					level = 1
+					instant_build = yes
+				}
+			}
+			
+			random_owned_controlled_state = {
+				limit = {
+					free_building_slots = {
+						building = arms_factory
+						size > 1
+						include_locked = yes
+					}
+				}
+				add_extra_state_shared_building_slots = 1
+				add_building_construction = {
+					type = arms_factory
+					level = 1
+					instant_build = yes
+				}
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_relationship_schutzstaffel
+		icon = GFX_goal_generic_military_deal
+		prerequisite = { focus = OBG_relationship_focus }
+
+		x = 5
+		y = 1
+		relative_position_id = OBG_relationship_focus
+		cost = 4
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_political_power = 10
+			country_event = rksburgundynew.13
+		}
+	}
+	
+	focus = {
+		id = OBG_relationship_gotenland
+		icon = GFX_goal_generic_improve_relations
+		prerequisite = { focus = OBG_relationship_schutzstaffel }
+
+		x = 2
+		y = 1
+		relative_position_id = OBG_relationship_schutzstaffel
+		cost = 4
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			country_exists = OGT
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			country_event = rksburgundynew.14
+		
+			OGT = {
+				add_opinion_modifier = { 
+					target = ROOT
+					modifier = OBG_mission_to_gotenland
+				}
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_relationship_banat
+		icon = GFX_goal_generic_improve_relations
+		prerequisite = { focus = OBG_relationship_schutzstaffel }
+
+		x = -2
+		y = 1
+		relative_position_id = OBG_relationship_schutzstaffel
+		cost = 4
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			country_exists = RBA
+			
+			has_global_flag = RBA_banat_ss_flag
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			country_event = rksburgundynew.15
+		
+			RBA = {
+				add_opinion_modifier = { 
+					target = ROOT
+					modifier = OBG_mission_to_banat
+				}
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_relationship_iceland
+		icon = GFX_goal_generic_improve_relations
+		prerequisite = { focus = OBG_relationship_schutzstaffel }
+
+		x = 1
+		y = 2
+		relative_position_id = OBG_relationship_schutzstaffel
+		cost = 4
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			country_exists = OIC
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			country_event = rksburgundynew.16
+		
+			OIC = {
+				add_opinion_modifier = { 
+					target = ROOT
+					modifier = OBG_mission_to_iceland
+				}
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_relationship_lombardie
+		icon = GFX_goal_generic_improve_relations
+		prerequisite = { focus = OBG_relationship_schutzstaffel }
+
+		x = -1
+		y = 2
+		relative_position_id = OBG_relationship_schutzstaffel
+		cost = 4
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			country_exists = OLB
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			country_event = rksburgundynew.17
+		
+			OLB = {
+				add_opinion_modifier = { 
+					target = ROOT
+					modifier = OBG_mission_to_lombardie
+				}
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_himmler_plans
+		icon = GFX_goal_generic_position_armies
+		#prerequisite = { focus =  }
+
+		x = 20
+		y = 10
+		#relative_position_id =
+		cost = 3.6
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			has_completed_focus = OBG_black_sun
+			
+			OR = {
+				has_completed_focus = OBG_new_organisation
+				has_completed_focus = OBG_industrial_overhaul
+			}
+		}
+		
+		bypass = {
+			has_country_flag = OBG_rksplus_settings_noburgundywar
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			GER = { end_puppet = OBG }
+			
+			leave_faction = yes
+			
+			if = {
+				limit = {
+					NOT = { has_rule = can_create_factions }
+				}
+				set_rule = { can_create_factions = yes }
+			}
+			if = {
+				limit = {
+					is_in_faction = no
+				}
+				create_faction = "burgundy_rksplus_faction"
+			}
+			
+			hidden_effect = {
+				GER = { 
+					country_event = rksburgundynew.63
+					set_country_flag = OBG_aggression_flag
+				}
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_operation_hahndolch
+		icon = GFX_goal_generic_occupy_states_ongoing_war
+		prerequisite = { focus = OBG_himmler_plans }
+
+		x = -3
+		y = 1
+		relative_position_id = OBG_himmler_plans
+		cost = 2
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_political_power = 25
+		}
+	}
+	
+	focus = {
+		id = OBG_demand_nordfrankreich
+		icon = GFX_goal_generic_more_territorial_claims
+		prerequisite = { focus = OBG_operation_hahndolch }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_operation_hahndolch
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		    if = {
+			
+			
+			    OR = {
+			        GER = {
+					    controls_state = 785
+						controls_state = 29
+						controls_state = 6
+						controls_state = 34
+						controls_state = 980
+						controls_state = 977
+					}
+					
+					AND = { 
+					    RFC = {
+						    controls_state = 785
+						    controls_state = 29
+						}
+						
+						RBG = {
+						    controls_state = 6
+						    controls_state = 34
+						    controls_state = 980
+							controls_state = 977
+						}
+					}
+					
+					AND = { 
+					    RFC = {
+						    controls_state = 785
+						}
+						
+						RBG = {
+						    controls_state = 29
+						    controls_state = 6
+						    controls_state = 34
+							controls_state = 980
+							controls_state = 977
+						}
+					}
+					
+					AND = { 
+					    RFC = {
+						    controls_state = 785
+						}
+						
+						GER = {
+						    controls_state = 29
+						    controls_state = 6
+						    controls_state = 34
+							controls_state = 980
+							controls_state = 977
+						}
+					}
+
+					AND = {
+						RNT = {
+							controls_state = 6
+							controls_state = 977
+						}
+
+						RBG = {
+						    controls_state = 34
+							controls_state = 980
+						}
+
+						RFC = {
+						    controls_state = 785
+						}
+					}
+				}
+			}
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+            GER = { country_event = rksplus.64 }
+		
+		}
+	}
+	
+	focus = {
+		id = OBG_fortify_nordfrankreich
+		icon = GFX_goal_generic_fortify_city
+		prerequisite = { focus = OBG_demand_nordfrankreich }
+
+		x = -2
+		y = 1
+		relative_position_id = OBG_demand_nordfrankreich
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			has_full_control_of_state = 34
+			has_full_control_of_state = 6
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			34 = {
+				if = {
+					limit = { is_controlled_by = ROOT }
+					custom_effect_tooltip = OBG_bunker_wallonie_tt
+					hidden_effect = {
+						add_building_construction = {
+							type = bunker
+							level = 8
+							province = 9418
+							instant_build = yes
+						}
+						add_building_construction = {
+							type = bunker
+							level = 8
+							province = 11407
+							instant_build = yes
+						}
+						add_building_construction = {
+							type = bunker
+							level = 8
+							province = 3488
+							instant_build = yes
+						}
+						add_building_construction = {
+							type = bunker
+							level = 8
+							province = 6537
+							instant_build = yes
+						}
+						add_building_construction = {
+							type = bunker
+							level = 8
+							province = 11519
+							instant_build = yes
+						}
+					}
+				}
+			}
+			
+			6 = {
+				if = {
+					limit = { is_controlled_by = ROOT }
+					custom_effect_tooltip = OBG_bunker_flanders_tt
+					hidden_effect = {
+						add_building_construction = {
+							type = bunker
+							level = 8
+							province = 9574
+							instant_build = yes
+						}
+						add_building_construction = {
+							type = bunker
+							level = 8
+							province = 11419
+							instant_build = yes
+						}
+						add_building_construction = {
+							type = bunker
+							level = 8
+							province = 6598
+							instant_build = yes
+						}
+						add_building_construction = {
+							type = bunker
+							level = 8
+							province = 6560
+							instant_build = yes
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_integrate_nordfrankreich
+		icon = GFX_goal_generic_demand_territory
+		prerequisite = { focus = OBG_demand_nordfrankreich }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_demand_nordfrankreich
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			has_full_control_of_state = 34
+			has_full_control_of_state = 6
+			has_full_control_of_state = 29
+			has_full_control_of_state = 785
+			has_full_control_of_state = 977
+			has_full_control_of_state = 980
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_state_core = 34
+			add_state_core = 6
+			add_state_core = 29
+			add_state_core = 785
+			add_state_core = 977
+			add_state_core = 980
+			
+			set_capital = {
+				state = 6
+				remember_old_capital = yes
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_develop_nordfrankreich
+		icon = GFX_goal_generic_construct_civilian
+		prerequisite = { focus = OBG_demand_nordfrankreich }
+
+		x = 2
+		y = 1
+		relative_position_id = OBG_demand_nordfrankreich
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			has_full_control_of_state = 34
+			has_full_control_of_state = 6
+			has_full_control_of_state = 29
+			has_full_control_of_state = 785
+			has_full_control_of_state = 977
+			has_full_control_of_state = 980
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_timed_idea = { idea = OBG_consumer_goods_idea days = 180 }
+		
+			785 = {
+				add_extra_state_shared_building_slots = 2
+				add_building_construction = {
+					type = industrial_complex
+					level = 2
+					instant_build = yes
+				}
+			}
+			
+			29 = {
+				add_extra_state_shared_building_slots = 2
+				add_building_construction = {
+					type = industrial_complex
+					level = 2
+					instant_build = yes
+				}
+			}
+			
+			34 = {
+				add_extra_state_shared_building_slots = 2
+				add_building_construction = {
+					type = arms_factory
+					level = 2
+					instant_build = yes
+				}
+			}
+			
+			6 = {
+				add_extra_state_shared_building_slots = 2
+				add_building_construction = {
+					type = arms_factory
+					level = 2
+					instant_build = yes
+				}
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_prepare_france
+		icon = GFX_goal_generic_position_armies
+		prerequisite = { focus = OBG_integrate_nordfrankreich }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_integrate_nordfrankreich
+		cost = 4
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			NOT = {
+				has_country_flag = OBG_rksplus_settings_noburgundywar
+			}
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_timed_idea = { idea = OBG_military_planning_idea days = 90 }
+		}
+	}
+	
+	focus = {
+		id = OBG_conquer_france
+		icon = GFX_goal_generic_territory_or_war
+		prerequisite = { focus = OBG_prepare_france }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_prepare_france
+		cost = 2
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			country_exists = RFC
+			
+			has_army_manpower = { size > 299999 }
+			
+			NOT = {
+				has_country_flag = OBG_rksplus_settings_noburgundywar
+			}
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			
+			hidden_effect = {
+				GER = { end_puppet = RFC }
+			
+				RFC = {	leave_faction = yes }
+				
+				RFC = {
+					if = {
+						limit = {
+							NOT = { has_rule = can_create_factions }
+						}
+						set_rule = { can_create_factions = yes }
+					}
+					if = {
+						limit = {
+							is_in_faction = no
+						}
+						create_faction = "frankreich_rksplus_faction"
+					}
+					
+					add_ideas = RFC_ai_notjoin_idea
+				}
+			}	
+			
+			declare_war_on = {
+				target = RFC
+				type = annex_everything
+			}
+			
+			add_timed_idea = { idea = OBG_france_invasion_bonus_idea days = 30 }
+		}
+	}
+	
+	focus = {
+		id = OBG_conquer_brittany
+		icon = GFX_goal_generic_territory_or_war
+		prerequisite = { focus = OBG_prepare_france }
+
+		x = -2
+		y = 1
+		relative_position_id = OBG_prepare_france
+		cost = 2
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			country_exists = RBE
+			
+			has_army_manpower = { size > 299999 }
+			
+			NOT = {
+				has_country_flag = OBG_rksplus_settings_noburgundywar
+			}
+		}
+		
+		bypass = {
+			NOT = {
+				country_exists = RBE
+			}
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			
+			hidden_effect = {
+				GER = { end_puppet = RBE }		
+			
+				RBE = {	leave_faction = yes }
+				
+				RBE = {
+					add_ideas = RFC_ai_notjoin_idea
+				}
+				
+				RFC = {
+					add_to_faction = RBE
+				}
+			}	
+			
+			declare_war_on = {
+				target = RBE
+				type = annex_everything
+			}
+		
+		}
+	}
+	
+	focus = {
+		id = OBG_integrate_frankreich
+		icon = GFX_goal_generic_political_pressure
+		prerequisite = { focus = OBG_conquer_france }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_conquer_france
+		cost = 8
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			controls_state = 16
+			NOT = { has_war_with = RFC }
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			set_capital = {
+				state = 16
+				remember_old_capital = yes
+			}
+		
+			custom_effect_tooltip = OBG_integrate_frankreich_tt
+			unlock_decision_tooltip = OBG_rksplus_integrate_paris
+			unlock_decision_tooltip = OBG_rksplus_integrate_normandy
+			unlock_decision_tooltip = OBG_rksplus_integrate_brittany
+			unlock_decision_tooltip = OBG_rksplus_integrate_bourgogne
+			unlock_decision_tooltip = OBG_rksplus_integrate_bourdeaux
+			unlock_decision_tooltip = OBG_rksplus_integrate_toulouse
+			unlock_decision_tooltip = OBG_rksplus_integrate_centralfrance
+			unlock_decision_tooltip = OBG_rksplus_integrate_rhone
+			unlock_decision_tooltip = OBG_rksplus_integrate_marseille
+			unlock_decision_tooltip = OBG_rksplus_integrate_var
+			unlock_decision_tooltip = OBG_rksplus_integrate_savoy
+			unlock_decision_tooltip = OBG_rksplus_integrate_corsica
+			
+			hidden_effect = {
+				RFC = {
+					remove_ideas = RFC_ai_notjoin_idea
+				}
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_subjugate_ordensstaats
+		icon = GFX_focus_generic_annex_country_2
+		prerequisite = { focus = OBG_himmler_plans }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_himmler_plans
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			OR = {
+				country_exists = OGT
+				country_exists = OIC
+				country_exists = RBA
+				country_exists = OLB
+			}
+			
+			NOT = {
+				has_country_flag = OBG_rksplus_settings_noburgundywar
+			}
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			custom_effect_tooltip = OBG_subjugate_ordensstaats_tt
+			unlock_decision_tooltip = OBG_rksplus_subjugate_gotenland
+			unlock_decision_tooltip = OBG_rksplus_subjugate_banat
+			unlock_decision_tooltip = OBG_rksplus_subjugate_iceland
+			unlock_decision_tooltip = OBG_rksplus_subjugate_lombardei
+			
+		}
+	}
+	
+	focus = {
+		id = OBG_under_the_black_sun
+		icon = GFX_focus_ger_reichskommisariats
+		prerequisite = { focus = OBG_subjugate_ordensstaats }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_subjugate_ordensstaats
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			is_subject = no
+			
+			NOT = {
+				has_country_flag = OBG_rksplus_settings_noburgundywar
+			}
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_political_power = 100
+		}
+	}
+	
+	focus = {
+		id = OBG_operation_gefalleneradler
+		icon = GFX_focus_attack_germany
+		prerequisite = { focus = OBG_himmler_plans }
+
+		x = 3
+		y = 1
+		relative_position_id = OBG_himmler_plans
+		cost = 2
+		ai_will_do = {
+			factor = 3
+		}
+		available = {
+			is_subject = no
+			
+			NOT = {	has_war_with = RFC }
+		
+			has_completed_focus = OBG_conquer_france
+			
+			NOT = {
+				has_country_flag = OBG_rksplus_settings_noburgundywar
+			}
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_political_power = 50
+		}
+	}
+	
+	focus = {
+		id = OBG_milfactories_germany
+		icon = GFX_focus_generic_tank_production
+		prerequisite = { focus = OBG_operation_gefalleneradler }
+
+		x = 1
+		y = 1
+		relative_position_id = OBG_operation_gefalleneradler
+		cost = 4
+		ai_will_do = {
+			factor = 3
+		}
+		available = {
+			is_subject = no
+			
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			random_owned_controlled_state = {
+				limit = {
+					free_building_slots = {
+						building = arms_factory
+						size > 1
+						include_locked = yes
+					}
+				}
+				add_extra_state_shared_building_slots = 2
+				add_building_construction = {
+					type = arms_factory
+					level = 2
+					instant_build = yes
+				}
+			}
+			
+			random_owned_controlled_state = {
+				limit = {
+					free_building_slots = {
+						building = arms_factory
+						size > 1
+						include_locked = yes
+					}
+				}
+				add_extra_state_shared_building_slots = 2
+				add_building_construction = {
+					type = arms_factory
+					level = 2
+					instant_build = yes
+				}
+			}
+			
+			random_owned_controlled_state = {
+				limit = {
+					free_building_slots = {
+						building = arms_factory
+						size > 1
+						include_locked = yes
+					}
+				}
+				add_extra_state_shared_building_slots = 2
+				add_building_construction = {
+					type = arms_factory
+					level = 2
+					instant_build = yes
+				}
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_prepare_army
+		icon = GFX_focus_chi_army_reform
+		prerequisite = { focus = OBG_operation_gefalleneradler }
+
+		x = -1
+		y = 1
+		relative_position_id = OBG_operation_gefalleneradler
+		cost = 4
+		ai_will_do = {
+			factor = 3
+		}
+		available = {
+			is_subject = no
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_war_support = 0.15
+			add_command_power = 100
+			army_experience = 75
+		}
+	}
+	
+	focus = {
+		id = OBG_the_countdown
+		icon = GFX_goal_generic_more_territorial_claims
+		prerequisite = { focus = OBG_prepare_army }
+		prerequisite = { focus = OBG_milfactories_germany }
+
+		x = 1
+		y = 1
+		relative_position_id = OBG_prepare_army
+		cost = 5
+		ai_will_do = {
+			factor = 3
+		}
+		available = {
+			is_subject = no
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_timed_idea = { idea = OBG_military_planning_idea days = 90 }
+		
+			country_event = rksburgundynew.31
+		}
+	}
+	
+	focus = {
+		id = OBG_demand_submission
+		icon = GFX_goal_generic_forceful_treaty
+		prerequisite = { focus = OBG_the_countdown }
+
+		x = -1
+		y = 1
+		relative_position_id = OBG_the_countdown
+		mutually_exclusive = { focus = OBG_suprise_attack }
+		cost = 1
+		ai_will_do = {
+			factor = 1
+		}
+		available = {
+			is_subject = no
+			
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			GER = {	country_event = rksburgundynew.32 }
+		}
+	}
+	
+	focus = {
+		id = OBG_suprise_attack
+		icon = GFX_focus_generic_provoke_border_clashes
+		prerequisite = { focus = OBG_the_countdown }
+
+		x = 1
+		y = 1
+		relative_position_id = OBG_the_countdown
+		mutually_exclusive = { focus = OBG_demand_submission }
+		cost = 1
+		ai_will_do = {
+			factor = 9
+		}
+		available = {
+			is_subject = no
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_timed_idea = { idea = OBG_german_invasion_bonus_idea days = 30 }
+		
+			declare_war_on = {
+				target = GER
+				type = annex_everything
+			}
+			
+			custom_effect_tooltip = ssburgundy_recommend_declarewar_tt
+		}
+	}
+	
+	focus = {
+		id = OBG_sabotage_germany
+		icon = GFX_focus_generic_conspiracy
+		prerequisite = { focus = OBG_suprise_attack focus = OBG_demand_submission }
+
+		x = 1
+		y = 1
+		relative_position_id = OBG_suprise_attack
+		cost = 2
+		ai_will_do = {
+			factor = 3
+		}
+		available = {
+			has_war_with = GER
+		}
+		
+		bypass = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			GER = {
+				country_event = rksburgundynew.34
+				add_timed_idea = { idea = OBG_germany_sabotaged_idea days = 120 }
+				
+				add_stability = -0.15
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_ss_uprisings
+		icon = GFX_focus_generic_manpower
+		prerequisite = { focus = OBG_suprise_attack focus = OBG_demand_submission }
+
+		x = -1
+		y = 1
+		relative_position_id = OBG_suprise_attack
+		cost = 2
+		ai_will_do = {
+			factor = 3
+		}
+		available = {
+			has_war_with = GER
+		}
+		
+		bypass = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			custom_effect_tooltip = ssburgundy_uprisings_tt
+		
+			country_event = rksburgundynew.35
+			
+			GER = {
+				country_event = rksburgundynew.36
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_demoralize_germany
+		icon = GFX_goal_generic_propaganda
+		prerequisite = { focus = OBG_suprise_attack focus = OBG_demand_submission }
+
+		x = -1
+		y = 1
+		relative_position_id = OBG_demand_submission
+		cost = 2
+		ai_will_do = {
+			factor = 3
+		}
+		available = {
+			has_war_with = GER
+		}
+		
+		bypass = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+		
+			GER = {
+				add_timed_idea = { idea = OBG_germany_demoralisation_idea days = 120 }
+				
+				country_event = rksburgundynew.37
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_occupy_germany
+		icon = GFX_goal_generic_political_pressure
+		prerequisite = { focus = OBG_ss_uprisings focus = OBG_demoralize_germany focus = OBG_sabotage_germany }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_ss_uprisings
+		cost = 5
+		ai_will_do = {
+			factor = 5
+		}
+		available = {
+			NOT = {
+				has_war_with = GER
+			}
+			
+			controls_state = 64
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			set_cosmetic_tag = OBG_burgunddeustch_reich
+			
+			country_event = rksburgundynew.38
+		}
+	}
+	
+	focus = {
+		id = OBG_integrate_germany
+		icon = GFX_goal_generic_demand_territory
+		prerequisite = { focus = OBG_occupy_germany }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_occupy_germany
+		cost = 6
+		ai_will_do = {
+			factor = 5
+		}
+		available = {
+			controls_state = 64
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+		
+			set_capital = {
+				state = 64
+				remember_old_capital = yes
+			}
+			
+			custom_effect_tooltip = OBG_integrate_deutschland_tt
+			unlock_decision_tooltip = OBG_rksplus_integrate_germany_rhineland
+			unlock_decision_tooltip = OBG_rksplus_integrate_germany_southgermany
+			unlock_decision_tooltip = OBG_rksplus_integrate_germany_westgermany
+			unlock_decision_tooltip = OBG_rksplus_integrate_germany_eastgermany
+			unlock_decision_tooltip = OBG_rksplus_integrate_germany_easterngermany
+			unlock_decision_tooltip = OBG_rksplus_integrate_germany_prussia
+			
+		}
+	}
+	
+	focus = {
+		id = OBG_proclaim_aryan_reich
+		icon = GFX_focus_generic_fascist_troops
+		prerequisite = { focus = OBG_integrate_germany }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_integrate_germany
+		cost = 5
+		ai_will_do = {
+			factor = 8
+		}
+		available = {
+			has_government = fascism
+			controls_state = 64
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_stability = 0.15
+			add_war_support = 0.15
+			add_political_power = 100
+			
+			set_cosmetic_tag = OBG_aryan_empire
+			
+			country_event = rksburgundynew.39
+		}
+	}
+	
+	focus = {
+		id = OBG_world_domination
+		icon = GFX_goal_rksplus_worlddomination
+		#prerequisite = { }
+
+		x = 30
+		y = 14
+		#relative_position_id = 
+		cost = 4
+		ai_will_do = {
+			factor = 8
+		}
+		available = {
+			has_government = fascism
+			has_completed_focus = OBG_proclaim_aryan_reich
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_political_power = 150
+			add_research_slot = 1
+		}
+	}
+	
+	focus = {
+		id = OBG_form_ordensstaats
+		icon = GFX_focus_ger_reichskommisariats
+		prerequisite = { focus = OBG_world_domination }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_world_domination
+		cost = 5
+		ai_will_do = {
+			factor = 8
+		}
+		available = {
+			has_government = fascism
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			custom_effect_tooltip = ssburgundy_form_ordensstaats_tt
+			
+		}
+	}
+	
+	focus = {
+		id = OBG_immortal_himmler
+		icon = GFX_goal_rksplus_immortalhimmler
+		prerequisite = { focus = OBG_form_ordensstaats }
+
+		x = -2
+		y = 1
+		relative_position_id = OBG_form_ordensstaats
+		cost = 5
+		ai_will_do = {
+			factor = 8
+		}
+		available = {
+			has_government = fascism
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_stability = 0.03
+			
+			add_country_leader_trait = nationalist_symbol
+		}
+	}
+	
+	focus = {
+		id = OBG_true_thousand_year
+		icon = GFX_goal_rksplus_truethousandyear
+		prerequisite = { focus = OBG_form_ordensstaats }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_form_ordensstaats
+		cost = 5
+		ai_will_do = {
+			factor = 8
+		}
+		available = {
+			has_government = fascism
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_ideas = OBG_true_thousand_year_idea
+		}
+	}
+	
+	focus = {
+		id = OBG_begin_world_purification
+		icon = GFX_goal_rksplus_purifyworld
+		prerequisite = { focus = OBG_form_ordensstaats }
+
+		x = 2
+		y = 1
+		relative_position_id = OBG_form_ordensstaats
+		cost = 5
+		ai_will_do = {
+			factor = 8
+		}
+		available = {
+			has_government = fascism
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_political_power = 250
+			
+			
+			add_ideas = OBG_world_purification_idea 
+		}
+	}
+	
+	focus = {
+		id = OBG_paradise_lost
+		icon = GFX_goal_rksplus_paradiselost
+		prerequisite = { focus = OBG_immortal_himmler }
+		prerequisite = { focus = OBG_true_thousand_year }
+		prerequisite = { focus = OBG_begin_world_purification }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_true_thousand_year
+		cost = 8
+		ai_will_do = {
+			factor = 8
+		}
+		available = {
+			has_government = fascism
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_war_support = 0.15
+		
+			country_event = rksburgundynew.67
+		}
+	}
+	
+	focus = {
+		id = OBG_artifacts_focus
+		icon = GFX_goal_generic_more_territorial_claims
+		prerequisite = { focus = OBG_himmler_plans }
+
+		x = 9
+		y = 1
+		relative_position_id = OBG_himmler_plans
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_political_power = 25
+		}
+	}
+	
+	focus = {
+		id = OBG_amazon_artifacts_focus
+		icon = GFX_goal_generic_alliance
+		prerequisite = { focus = OBG_artifacts_focus }
+
+		x = -3
+		y = 1
+		relative_position_id = OBG_artifacts_focus
+		mutually_exclusive = { focus = OBG_norway_artifacts_focus }
+		mutually_exclusive = { focus = OBG_tibet_artifacts_focus }
+		mutually_exclusive = { focus = OBG_japan_artifacts_focus }
+		mutually_exclusive = { focus = OBG_nordland_artifacts_focus }
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			country_event = rksburgundynew.54
+		}
+	}
+	
+	focus = {
+		id = OBG_norway_artifacts_focus
+		icon = GFX_goal_generic_alliance
+		prerequisite = { focus = OBG_artifacts_focus }
+
+		x = -1
+		y = 1
+		relative_position_id = OBG_artifacts_focus
+		mutually_exclusive = { focus = OBG_amazon_artifacts_focus }
+		mutually_exclusive = { focus = OBG_tibet_artifacts_focus }
+		mutually_exclusive = { focus = OBG_japan_artifacts_focus }
+		mutually_exclusive = { focus = OBG_nordland_artifacts_focus }
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			country_event = rksburgundynew.59
+		}
+	}
+	
+	focus = {
+		id = OBG_tibet_artifacts_focus
+		icon = GFX_goal_generic_alliance
+		prerequisite = { focus = OBG_artifacts_focus }
+
+		x = 1
+		y = 1
+		relative_position_id = OBG_artifacts_focus
+		mutually_exclusive = { focus = OBG_amazon_artifacts_focus }
+		mutually_exclusive = { focus = OBG_norway_artifacts_focus }
+		mutually_exclusive = { focus = OBG_japan_artifacts_focus }
+		mutually_exclusive = { focus = OBG_nordland_artifacts_focus }
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			country_event = rksburgundynew.49
+		}
+	}
+	
+	focus = {
+		id = OBG_japan_artifacts_focus
+		icon = GFX_goal_generic_alliance
+		prerequisite = { focus = OBG_artifacts_focus }
+
+		x = 3
+		y = 1
+		relative_position_id = OBG_artifacts_focus
+		mutually_exclusive = { focus = OBG_amazon_artifacts_focus }
+		mutually_exclusive = { focus = OBG_norway_artifacts_focus }
+		mutually_exclusive = { focus = OBG_tibet_artifacts_focus }
+		mutually_exclusive = { focus = OBG_nordland_artifacts_focus }
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			country_exists = RJA
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			country_event = rksburgundynew.40
+		}
+	}
+	
+	focus = {
+		id = OBG_nordland_artifacts_focus
+		icon = GFX_goal_generic_alliance
+		prerequisite = { focus = OBG_artifacts_focus }
+
+		x = 5
+		y = 1
+		relative_position_id = OBG_artifacts_focus
+		mutually_exclusive = { focus = OBG_amazon_artifacts_focus }
+		mutually_exclusive = { focus = OBG_norway_artifacts_focus }
+		mutually_exclusive = { focus = OBG_tibet_artifacts_focus }
+		mutually_exclusive = { focus = OBG_japan_artifacts_focus }
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			country_event = rksgeneric.2
+		}
+	}
+	
+	focus = {
+		id = OBG_military_question
+		icon = GFX_goal_generic_military_sphere
+		#prerequisite = { focus =  }
+
+		x = 7
+		y = 10
+		#relative_position_id =
+		cost = 3
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_command_power = 15
+		}
+	}
+	
+	focus = {
+		id = OBG_army_state
+		icon = GFX_focus_generic_military_mission
+		prerequisite = { focus = OBG_military_question }
+
+		x = -5
+		y = 1
+		relative_position_id = OBG_military_question
+		cost = 4
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			army_experience = 25
+		}
+	}
+	
+	focus = {
+		id = OBG_fortify_german_borders
+		icon = GFX_goal_generic_construct_military
+		prerequisite = { focus = OBG_army_state }
+
+		x = 2
+		y = 1
+		relative_position_id = OBG_army_state
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			has_full_control_of_state = 18
+			has_full_control_of_state = 17
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			custom_effect_tooltip = ssburgundy_fortify_german_tt
+			
+			hidden_effect = {
+				17 = {
+					add_building_construction = {
+						type = bunker
+						level = 8
+						province = 11516
+						instant_build = yes
+					}
+					
+					add_building_construction = {
+						type = bunker
+						level = 8
+						province = 521
+						instant_build = yes
+					}
+					
+					add_building_construction = {
+						type = bunker
+						level = 8
+						province = 698
+						instant_build = yes
+					}
+					
+					add_building_construction = {
+						type = bunker
+						level = 8
+						province = 3666
+						instant_build = yes
+					}
+					
+					add_building_construction = {
+						type = bunker
+						level = 8
+						province = 3646
+						instant_build = yes
+					}
+				}
+				
+				18 = {
+					add_building_construction = {
+						type = bunker
+						level = 8
+						province = 5291
+						instant_build = yes
+					}
+					
+					add_building_construction = {
+						type = bunker
+						level = 8
+						province = 3560
+						instant_build = yes
+					}
+					
+					add_building_construction = {
+						type = bunker
+						level = 8
+						province = 9472
+						instant_build = yes
+					}
+				}
+			}
+			
+		}
+	}
+
+	focus = {
+		id = OBG_lessons_from_war
+		icon = GFX_goal_generic_army_doctrines
+		prerequisite = { focus = OBG_army_state }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_army_state
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			army_experience = 25
+		
+			add_doctrine_cost_reduction = {
+				name = rkp_land_doc_bonus
+				cost_reduction = 0.5
+				uses = 2
+				category = land_doctrine
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_armored_research
+		icon = GFX_goal_generic_army_tanks
+		prerequisite = { focus = OBG_lessons_from_war }
+
+		x = 2
+		y = 1
+		relative_position_id = OBG_lessons_from_war
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_tech_bonus = {
+				name = armor_bonus
+				bonus = 1.0
+				uses = 2
+				category = armor
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_infantry_research
+		icon = GFX_goal_generic_axis_build_infantry
+		prerequisite = { focus = OBG_lessons_from_war }
+
+		x = -2
+		y = 1
+		relative_position_id = OBG_lessons_from_war
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_tech_bonus = {
+				name = infantry_research_bonus
+				bonus = 1.0
+				uses = 2
+				category = infantry_weapons
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_artillery_research
+		icon = GFX_goal_generic_army_artillery2
+		prerequisite = { focus = OBG_lessons_from_war }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_lessons_from_war
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_tech_bonus = {
+				name = artillery_research_bonus
+				bonus = 1.0
+				uses = 2
+				category = artillery
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_smuggle_equipments
+		icon = GFX_goal_generic_small_arms
+		prerequisite = { focus = OBG_infantry_research focus = OBG_artillery_research }
+
+		x = 1
+		y = 1
+		relative_position_id = OBG_infantry_research
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_equipment_to_stockpile = {
+                type = infantry_equipment
+                amount = 8000
+                producer = GER
+            }
+			
+			add_equipment_to_stockpile = {
+                type = artillery_equipment
+                amount = 250
+                producer = GER
+            }
+		}
+	}
+	
+	focus = {
+		id = OBG_defunct_motorized
+		icon = GFX_goal_generic_army_motorized
+		prerequisite = { focus = OBG_artillery_research focus = OBG_armored_research }
+
+		x = 1
+		y = 1
+		relative_position_id = OBG_artillery_research
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_equipment_to_stockpile = {
+                type = motorized_equipment
+                amount = 300
+                producer = GER
+            }
+		}
+	}
+	
+	focus = {
+		id = OBG_train_instructors
+		icon = GFX_focus_generic_military_academy
+		prerequisite = { focus = OBG_smuggle_equipments }
+		prerequisite = { focus = OBG_defunct_motorized }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_smuggle_equipments
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			army_experience = 10
+			
+			add_ideas = OBG_train_instructors_idea
+		}
+	}
+	
+	focus = {
+		id = OBG_armored_exercise
+		icon = GFX_focus_generic_combined_arms
+		prerequisite = { focus = OBG_defunct_motorized }
+		prerequisite = { focus = OBG_smuggle_equipments }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_defunct_motorized
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			army_experience = 25
+			
+			add_ideas = OBG_armor_bonus_idea
+		}
+	}
+	
+	focus = {
+		id = OBG_professional_army
+		icon = GFX_focus_chi_army_reform
+		prerequisite = { focus = OBG_train_instructors focus = OBG_armored_exercise }
+
+		x = -1
+		y = 1
+		relative_position_id = OBG_armored_exercise
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			swap_ideas = {
+				remove_idea = OBG_army_state_poor
+				add_idea = OBG_army_state_great
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_burgundian_warriors
+		icon = GFX_goal_rhineland
+		prerequisite = { focus = OBG_professional_army  }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_professional_army
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			custom_effect_tooltip = ssburgundy_resistance_tt
+			
+			hidden_effect = {
+				remove_ideas = OBG_resistance
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_airforce_state
+		icon = GFX_goal_generic_build_airforce
+		prerequisite = { focus = OBG_military_question }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_military_question
+		cost = 4
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			air_experience = 25
+		}
+	}
+	
+	focus = {
+		id = OBG_bribe_german_pilots
+		icon = GFX_goal_generic_air_doctrine
+		prerequisite = { focus = OBG_airforce_state }
+
+		x = -1
+		y = 1
+		relative_position_id = OBG_airforce_state
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			air_experience = 25
+		
+			add_doctrine_cost_reduction = {
+				name = rkp_land_doc_bonus
+				cost_reduction = 0.5
+				uses = 2
+				category = air_doctrine
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_smuggle_aircraft_parts
+		icon = GFX_goal_generic_air_fighter
+		prerequisite = { focus = OBG_airforce_state }
+
+		x = 1
+		y = 1
+		relative_position_id = OBG_airforce_state
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_tech_bonus = {
+				name = fighter_bonus
+				bonus = 1.0
+				uses = 2
+				category = light_fighter
+				category = cas_bomber
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_aircraft_factories
+		icon = GFX_focus_generic_aircraft_production
+		prerequisite = { focus = OBG_smuggle_aircraft_parts }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_smuggle_aircraft_parts
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			random_owned_controlled_state = {
+				limit = {
+					free_building_slots = {
+						building = arms_factory
+						size > 1
+						include_locked = yes
+					}
+				}
+				add_extra_state_shared_building_slots = 2
+				add_building_construction = {
+					type = arms_factory
+					level = 2
+					instant_build = yes
+				}
+			}
+			
+			random_owned_controlled_state = {
+				limit = {
+					free_building_slots = {
+						building = arms_factory
+						size > 1
+						include_locked = yes
+					}
+				}
+				add_extra_state_shared_building_slots = 2
+				add_building_construction = {
+					type = arms_factory
+					level = 2
+					instant_build = yes
+				}
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_air_exercise
+		icon = GFX_goal_generic_CAS
+		prerequisite = { focus = OBG_bribe_german_pilots }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_bribe_german_pilots
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_ideas = OBG_airforce_academy_idea
+		}
+	}
+	
+	focus = {
+		id = OBG_build_airbase
+		icon = GFX_goal_generic_construct_civilian
+		prerequisite = { focus = OBG_air_exercise }
+		prerequisite = { focus = OBG_aircraft_factories }
+
+		x = 1
+		y = 1
+		relative_position_id = OBG_air_exercise
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			17 = {
+				add_building_construction = {
+					type = air_base
+					level = 10
+					instant_build = yes
+				}
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_eagles_of_the_sky
+		icon = GFX_goal_generic_air_fighter2
+		prerequisite = { focus = OBG_build_airbase }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_build_airbase
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			air_experience = 25
+			swap_ideas = {
+				remove_idea = OBG_airforce_academy_idea
+				add_idea = OBG_airforce_eagles_idea
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_navy_state
+		icon = GFX_goal_generic_build_navy
+		prerequisite = { focus = OBG_military_question }
+
+		x = 7
+		y = 1
+		relative_position_id = OBG_military_question
+		cost = 4
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			any_state = {
+				is_coastal = yes
+				is_controlled_by = ROOT
+			}
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			navy_experience = 25
+		}
+	}
+	
+	focus = {
+		id = OBG_construct_dockyards
+		icon = GFX_goal_generic_construct_naval_dockyard
+		prerequisite = { focus = OBG_navy_state }
+
+		x = 1
+		y = 1
+		relative_position_id = OBG_navy_state
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			any_state = {
+				is_coastal = yes
+				is_controlled_by = ROOT
+			}
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			navy_experience = 25
+			if = {
+				limit = {
+					NOT = {
+						any_owned_state = {
+							dockyard > 0
+							free_building_slots = {
+								building = dockyard
+								size > 2
+								include_locked = yes
+							}
+						}
+					}
+					any_owned_state = {
+						is_coastal = yes
+					}
+				}
+				random_owned_controlled_state = {
+					limit = {
+						is_coastal = yes
+						free_building_slots = {
+							building = dockyard
+							size > 2
+							include_locked = yes
+						}
+					}
+					add_extra_state_shared_building_slots = 3
+					add_building_construction = {
+						type = dockyard
+						level = 3
+						instant_build = yes
+					}
+				}
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_steal_convoys
+		icon = GFX_goal_generic_amphibious_assault
+		prerequisite = { focus = OBG_navy_state }
+
+		x = -1
+		y = 1
+		relative_position_id = OBG_navy_state
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			any_state = {
+				is_coastal = yes
+				is_controlled_by = ROOT
+			}
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_equipment_to_stockpile = {
+                type = convoy
+                amount = 100
+                producer = OBG
+            }
+		}
+	}
+	
+	focus = {
+		id = OBG_smuggling_routes
+		icon = GFX_goal_generic_occupy_states_coastal
+		prerequisite = { focus = OBG_steal_convoys }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_steal_convoys
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+			any_state = {
+				is_coastal = yes
+				is_controlled_by = ROOT
+			}
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_ideas = OBG_navy_convoy_idea
+		}
+	}
+	
+	focus = {
+		id = OBG_wunderwaffen_state
+		icon = GFX_goal_generic_intelligence_exchange
+		prerequisite = { focus = OBG_military_question }
+
+		x = 3
+		y = 1
+		relative_position_id = OBG_military_question
+		cost = 4
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_political_power = 25
+		}
+	}
+	
+	focus = {
+		id = OBG_technological_advancement
+		icon = GFX_focus_research
+		prerequisite = { focus = OBG_wunderwaffen_state }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_wunderwaffen_state
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_research_slot = 1
+			
+			add_tech_bonus = {
+				name = electronics_bonus
+				bonus = 1.0
+				uses = 3
+				category = electronics
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_rocketry
+		icon = GFX_focus_rocketry
+		prerequisite = { focus = OBG_technological_advancement }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_technological_advancement
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_tech_bonus = {
+				name = rocketry_bonus
+				bonus = 1.0
+				uses = 2
+				category = rocketry
+			}
+		}
+	}
+	
+	focus = {
+		id = OBG_nuclearbomb
+		icon = GFX_focus_wonderweapons
+		prerequisite = { focus = OBG_rocketry }
+
+		x = 0
+		y = 1
+		relative_position_id = OBG_rocketry
+		cost = 5
+		ai_will_do = {
+			factor = 10
+		}
+		available = {
+		}
+
+		search_filters = {}
+
+		completion_reward = {
+			add_tech_bonus = {
+				name = nuclear_bonus
+				ahead_reduction = 2
+				category = nuclear
+			}
+		}
+	}
+}
+
