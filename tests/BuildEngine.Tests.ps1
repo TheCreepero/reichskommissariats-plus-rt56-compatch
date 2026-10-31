@@ -5,7 +5,7 @@ BeforeAll {
 
     $script:RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
     $script:BuildScriptPath = Join-Path $script:RepoRoot 'build.ps1'
-    $script:IsModRepo = (Test-Path -LiteralPath (Join-Path $script:RepoRoot 'descriptor.mod')) -and (Test-Path -LiteralPath $script:BuildScriptPath)
+    $script:IsModRepo = (Test-Path -LiteralPath $script:BuildScriptPath) -and ((Test-Path -LiteralPath (Join-Path $script:RepoRoot 'descriptor.mod')) -or @((Get-ModBuildConfig -RepoDir $script:RepoRoot).PackageNames).Count -gt 0)
     $script:PowerShellExe = (Get-Process -Id $PID).Path
     $script:TempRoots = [System.Collections.Generic.List[string]]::new()
 
@@ -52,6 +52,30 @@ BeforeAll {
 
     function Get-FixtureContentList {
         return @('common/units/names/fixture_names.txt', 'descriptor.mod', 'localisation/english/fixture_l_english.yml', 'thumbnail.png' | Sort-Object)
+    }
+
+    function New-FixturePackRepo {
+        $fixtureRoot = New-TestDirectory
+        foreach ($packName in @('alpha', 'beta')) {
+            $packRoot = 'packs\' + $packName
+            Write-TestFile -Root $fixtureRoot -RelativePath "$packRoot\descriptor.mod" -Text ("version=`"1.0`"`r`nname=`"Fixture Pack: $packName`"`r`nsupported_version=`"1.19.*`"`r`n")
+            [System.IO.File]::WriteAllBytes((Join-Path $fixtureRoot "$packRoot\thumbnail.png"), [byte[]](137, 80, 78, 71))
+            Write-TestFile -Root $fixtureRoot -RelativePath "$packRoot\events\${packName}_events.txt" -Text "add_namespace = $packName`r`n"
+            Write-TestFile -Root $fixtureRoot -RelativePath "$packRoot\localisation\english\${packName}_l_english.yml" -Text "l_english:`r`n ${packName}_key:0 `"Text`"`r`n" -Bom
+            Write-TestFile -Root $fixtureRoot -RelativePath "$packRoot\WORKSHOP_DESCRIPTION_GUIDELINES.md" -Text "# $packName`r`n`r`n``````bbcode`r`n[h1]$packName[/h1]`r`n```````r`n"
+        }
+        Write-TestFile -Root $fixtureRoot -RelativePath 'source\alpha\events.json' -Text '{}'
+        Write-TestFile -Root $fixtureRoot -RelativePath 'events\decoy_events.txt' -Text "add_namespace = decoy`r`n"
+        Write-TestFile -Root $fixtureRoot -RelativePath 'common\decoy\decoy.txt' -Text "decoy = { }`r`n"
+        Write-TestFile -Root $fixtureRoot -RelativePath 'README.md' -Text '# Fixture packs'
+        Write-TestFile -Root $fixtureRoot -RelativePath 'tools\HoiModBuild.json' -Text '{ "defaultChangeNote": "Fixture update", "packages": { "alpha": { "root": "packs/alpha", "modFolderName": "fixture_alpha" }, "beta": { "root": "packs/beta", "modFolderName": "fixture_beta", "zipArchiveName": "beta_release.zip" } } }'
+        return $fixtureRoot
+    }
+
+    function Get-FixturePackContentList {
+        param([string]$PackName)
+
+        return @("events/${PackName}_events.txt", 'descriptor.mod', "localisation/english/${PackName}_l_english.yml", 'thumbnail.png' | Sort-Object)
     }
 
     function Get-RelativeFileList {
@@ -323,6 +347,148 @@ Describe 'Lifecycle actions' {
     }
 }
 
+Describe 'Packages' {
+    It 'keeps a repository without packages at its root, and refuses -Pack there' {
+        $config = Get-ModBuildConfig -RepoDir (New-FixtureRepo)
+        $config.ContentRoot | Should -Be $config.RepoDir
+        $config.ContentPrefix | Should -Be ''
+        @($config.PackageNames).Count | Should -Be 0
+        @(Get-ModSelectedConfigs -Config $config).Count | Should -Be 1
+        { Get-ModSelectedConfigs -Config $config -Pack 'alpha' } | Should -Throw '*defines no packages*'
+    }
+
+    It 'gives each package its own root, descriptor, folder, archive and inherited settings' {
+        $fixtureRoot = New-FixturePackRepo
+        $config = Get-ModBuildConfig -RepoDir $fixtureRoot
+        @($config.PackageNames) | Should -Be @('alpha', 'beta')
+        $alphaConfig = Get-ModBuildConfig -RepoDir $fixtureRoot -PackageName 'alpha'
+        $alphaConfig.RepoDir | Should -Be $config.RepoDir
+        $alphaConfig.ContentRoot | Should -Be (Join-Path $config.RepoDir 'packs\alpha')
+        $alphaConfig.ContentPrefix | Should -Be 'packs/alpha/'
+        $alphaConfig.DescriptorPath | Should -Be (Join-Path $config.RepoDir 'packs\alpha\descriptor.mod')
+        $alphaConfig.GuidelinesPath | Should -Be (Join-Path $config.RepoDir 'packs\alpha\WORKSHOP_DESCRIPTION_GUIDELINES.md')
+        $alphaConfig.ModFolderName | Should -Be 'fixture_alpha'
+        $alphaConfig.ZipArchiveName | Should -Be 'fixture_alpha.zip'
+        $alphaConfig.DefaultChangeNote | Should -Be 'Fixture update'
+        (Get-ModBuildConfig -RepoDir $fixtureRoot -PackageName 'beta').ZipArchiveName | Should -Be 'beta_release.zip'
+    }
+
+    It 'refuses an unknown package and a root outside the repository' {
+        $fixtureRoot = New-FixturePackRepo
+        { Get-ModBuildConfig -RepoDir $fixtureRoot -PackageName 'gamma' } | Should -Throw '*its packages are: alpha, beta*'
+        Write-TestFile -Root $fixtureRoot -RelativePath 'tools\HoiModBuild.json' -Text '{ "packages": { "alpha": { "root": "../elsewhere" } } }'
+        { Get-ModBuildConfig -RepoDir $fixtureRoot -PackageName 'alpha' } | Should -Throw '*outside the repository*'
+    }
+
+    It 'selects and validates only the files of each package' {
+        $fixtureRoot = New-FixturePackRepo
+        $packConfigs = @(Get-ModSelectedConfigs -Config (Get-ModBuildConfig -RepoDir $fixtureRoot))
+        @($packConfigs | ForEach-Object { $_.PackageName }) | Should -Be @('alpha', 'beta')
+        foreach ($packConfig in $packConfigs) {
+            @(Get-ModContentFiles -Config $packConfig) | Should -Be (Get-FixturePackContentList -PackName $packConfig.PackageName)
+            Invoke-ModValidation -Config $packConfig -SkipParser | Should -BeTrue
+        }
+        Remove-Item -LiteralPath (Join-Path $fixtureRoot 'packs\beta\thumbnail.png')
+        Invoke-ModValidation -Config (Get-ModBuildConfig -RepoDir $fixtureRoot -PackageName 'beta') -SkipParser | Should -BeFalse
+        Invoke-ModValidation -Config (Get-ModBuildConfig -RepoDir $fixtureRoot -PackageName 'alpha') -SkipParser | Should -BeTrue
+    }
+
+    It 'packages every package into its own archive when no package is named' {
+        $fixtureRoot = New-FixturePackRepo
+        $config = Get-ModBuildConfig -RepoDir $fixtureRoot
+        Invoke-ModBuildAction -Config $config -Package -NoValidate | Select-Object -Last 1 | Should -Be 0
+        Get-ZipEntryList -ZipPath (Join-Path $fixtureRoot 'artifacts\fixture_alpha.zip') | Should -Be (Get-FixturePackContentList -PackName 'alpha')
+        Get-ZipEntryList -ZipPath (Join-Path $fixtureRoot 'artifacts\beta_release.zip') | Should -Be (Get-FixturePackContentList -PackName 'beta')
+    }
+
+    It 'refuses an upload or one archive name without a package, and an unknown package' {
+        $config = Get-ModBuildConfig -RepoDir (New-FixturePackRepo)
+        Invoke-ModBuildAction -Config $config -PublishSteam -DryRun -NoValidate -SteamUser 'tester' | Select-Object -Last 1 | Should -Be 1
+        Invoke-ModBuildAction -Config $config -Package -NoValidate -ZipOutput 'one.zip' | Select-Object -Last 1 | Should -Be 1
+        Invoke-ModBuildAction -Config $config -Package -NoValidate -Pack 'gamma' | Select-Object -Last 1 | Should -Be 1
+    }
+
+    It 'deploys and DevLinks one package from its own root' {
+        $modDir = New-TestDirectory
+        $fixtureRoot = New-FixturePackRepo
+        $config = Get-ModBuildConfig -RepoDir $fixtureRoot -ModDir $modDir
+        Invoke-ModBuildAction -Config $config -Deploy -NoValidate -Pack 'beta' | Select-Object -Last 1 | Should -Be 0
+        Get-RelativeFileList -Root (Join-Path $modDir 'fixture_beta') | Should -Be (Get-FixturePackContentList -PackName 'beta')
+        Test-Path -LiteralPath (Join-Path $modDir 'fixture_alpha.mod') | Should -BeFalse
+        Invoke-ModBuildAction -Config $config -DevLink -NoValidate -Pack 'alpha' | Select-Object -Last 1 | Should -Be 0
+        Get-ModLauncherTarget -LauncherFilePath (Join-Path $modDir 'fixture_alpha.mod') | Should -Be (Join-Path $config.RepoDir 'packs\alpha')
+    }
+
+    It 'stages a dry-run upload of one package with its own title, preview and description' {
+        $config = Get-ModBuildConfig -RepoDir (New-FixturePackRepo) -PackageName 'alpha'
+        $publishOutput = @(Invoke-ModPublish -Config $config -DryRun -UpdateDescription -SteamUser 'tester' 6>&1)
+        [int]$publishOutput[-1] | Should -Be 0
+        $stagedLine = @($publishOutput | ForEach-Object { "$_" } | Where-Object { $_ -match 'Staged content at:' })[0]
+        $contentDir = ($stagedLine -replace '^.*Staged content at:\s*', '').Trim()
+        $script:TempRoots.Add((Split-Path -Parent $contentDir))
+        Get-RelativeFileList -Root $contentDir | Should -Be (Get-FixturePackContentList -PackName 'alpha')
+        $vdfText = [System.IO.File]::ReadAllText((Join-Path (Split-Path -Parent $contentDir) 'workshop_build.vdf'))
+        $vdfText | Should -Match ([regex]::Escape('"title" "Fixture Pack: alpha"'))
+        $vdfText | Should -Match ([regex]::Escape('"description" "[h1]alpha[/h1]"'))
+        $vdfText | Should -Match ([regex]::Escape('"previewfile" "' + ($contentDir -replace '\\', '/') + '/thumbnail.png"'))
+    }
+
+    It 'passes -Pack on to the engine' {
+        function Invoke-PackProbe {
+            param([switch]$Deploy, [string]$Pack, [string]$Generate)
+            Select-ModBuildParameters -BoundParameters $PSBoundParameters
+        }
+        $selectedParameters = Invoke-PackProbe -Deploy -Pack 'alpha' -Generate 'x'
+        @($selectedParameters.Keys | Sort-Object) | Should -Be @('Deploy', 'Pack')
+        $selectedParameters['Pack'] | Should -Be 'alpha'
+    }
+
+    It 'fails validation when any package is broken, and passes for the sound one alone' {
+        $fixtureRoot = New-FixturePackRepo
+        Remove-Item -LiteralPath (Join-Path $fixtureRoot 'packs\beta\thumbnail.png')
+        $config = Get-ModBuildConfig -RepoDir $fixtureRoot
+        Invoke-ModBuildAction -Config $config -ValidateOnly | Select-Object -Last 1 | Should -Be 1
+        Invoke-ModBuildAction -Config $config -ValidateOnly -Pack 'alpha' | Select-Object -Last 1 | Should -Be 0
+    }
+
+    It 'cleans one package and leaves the other deployed' {
+        $modDir = New-TestDirectory
+        $config = Get-ModBuildConfig -RepoDir (New-FixturePackRepo) -ModDir $modDir
+        Invoke-ModBuildAction -Config $config -Deploy -NoValidate | Select-Object -Last 1 | Should -Be 0
+        Invoke-ModBuildAction -Config $config -Clean -Pack 'alpha' | Select-Object -Last 1 | Should -Be 0
+        Test-Path -LiteralPath (Join-Path $modDir 'fixture_alpha') | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $modDir 'fixture_alpha.mod') | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $modDir 'fixture_beta.mod') | Should -BeTrue
+        Get-RelativeFileList -Root (Join-Path $modDir 'fixture_beta') | Should -Be (Get-FixturePackContentList -PackName 'beta')
+    }
+
+    It 'reports ignored and uncommitted files under the package root only' {
+        if (-not (Get-Command -Name 'git' -ErrorAction SilentlyContinue)) {
+            Set-ItResult -Skipped -Because 'git is not installed'
+            return
+        }
+        $fixtureRoot = New-FixturePackRepo
+        Invoke-ModGit -RepoDir $fixtureRoot -Arguments @('init', '-q') | Out-Null
+        Write-TestFile -Root $fixtureRoot -RelativePath '.gitignore' -Text "*.mod`n"
+        $ErrorActionPreference = 'Stop'
+        $alphaConfig = Get-ModBuildConfig -RepoDir $fixtureRoot -PackageName 'alpha'
+        @(Get-ModIgnoredRequiredFiles -Config $alphaConfig) | Should -Be @('packs/alpha/descriptor.mod')
+        $uncommittedFiles = @(Get-ModUncommittedContentFiles -Config $alphaConfig)
+        $uncommittedFiles.Count | Should -BeGreaterThan 0
+        @($uncommittedFiles | Where-Object { $_ -notlike 'packs/alpha/*' }) | Should -BeNullOrEmpty
+    }
+
+    It 'refuses packages that share a mod folder name' {
+        $fixtureRoot = New-FixturePackRepo
+        Write-TestFile -Root $fixtureRoot -RelativePath 'tools\HoiModBuild.json' -Text '{ "packages": { "alpha": { "root": "packs/alpha", "modFolderName": "same" }, "beta": { "root": "packs/beta", "modFolderName": "same" } } }'
+        { Get-ModSelectedConfigs -Config (Get-ModBuildConfig -RepoDir $fixtureRoot) } | Should -Throw '*share a ModFolderName*'
+        Write-TestFile -Root $fixtureRoot -RelativePath 'tools\HoiModBuild.json' -Text '{ "packages": { "alpha": { "root": "packs/alpha", "zipArchiveName": "same.zip" }, "beta": { "root": "packs/beta", "zipArchiveName": "same.zip" } } }'
+        { Get-ModSelectedConfigs -Config (Get-ModBuildConfig -RepoDir $fixtureRoot) } | Should -Throw '*share a ZipArchiveName*'
+        Write-TestFile -Root $fixtureRoot -RelativePath 'tools\HoiModBuild.json' -Text '{ "packages": { "alpha": { "root": "packs/alpha" }, "beta": { "root": "packs/alpha" } } }'
+        { Get-ModSelectedConfigs -Config (Get-ModBuildConfig -RepoDir $fixtureRoot) } | Should -Throw '*share a ContentRoot*'
+    }
+}
+
 Describe 'Workshop VDF' {
     It 'escapes quotes and backslashes and keeps the visibility of an existing item' {
         $vdfText = New-ModWorkshopVdf -ContentDir 'C:\stage\content' -PreviewPath 'C:\stage\content\thumbnail.png' -Title 'My "Mod"' -PublishedFileId '123' -ChangeNote 'Fix C:\path and "quotes"'
@@ -342,8 +508,16 @@ Describe 'Workshop VDF' {
 Describe 'This repository' {
     BeforeAll {
         if ($script:IsModRepo) {
-            $script:RepoConfig = Get-ModBuildConfig -RepoDir $script:RepoRoot
-            $script:RepoContent = @(Get-ModContentFiles -Config $script:RepoConfig)
+            $script:RepoConfigs = @(Get-ModSelectedConfigs -Config (Get-ModBuildConfig -RepoDir $script:RepoRoot))
+        }
+
+        function Get-PackArguments {
+            param($RepoConfig)
+
+            if ($RepoConfig.PackageName) {
+                return @('-Pack', $RepoConfig.PackageName)
+            }
+            return @()
         }
     }
 
@@ -381,14 +555,18 @@ Describe 'This repository' {
             Set-ItResult -Skipped -Because 'this file runs from the Modding Manager, not from a mod repository'
             return
         }
-        $zipPath = Join-Path (New-TestDirectory) 'package.zip'
-        & $script:PowerShellExe -NoProfile -ExecutionPolicy Bypass -File $script:BuildScriptPath -Package -NoValidate -ZipOutput $zipPath | Out-Null
-        $LASTEXITCODE | Should -Be 0
-        $expectedEntries = $script:RepoContent
-        if ($script:RepoConfig.PackageLayout -eq 'ModFolder') {
-            $expectedEntries = @(@($script:RepoContent | ForEach-Object { $script:RepoConfig.ModFolderName + '/' + $_ }) + @($script:RepoConfig.ModFolderName + '.mod') | Sort-Object)
+        foreach ($repoConfig in $script:RepoConfigs) {
+            $repoContent = @(Get-ModContentFiles -Config $repoConfig)
+            $zipPath = Join-Path (New-TestDirectory) 'package.zip'
+            $packArguments = @(Get-PackArguments -RepoConfig $repoConfig)
+            & $script:PowerShellExe -NoProfile -ExecutionPolicy Bypass -File $script:BuildScriptPath -Package -NoValidate -ZipOutput $zipPath @packArguments | Out-Null
+            $LASTEXITCODE | Should -Be 0 -Because "package '$($repoConfig.PackageName)'"
+            $expectedEntries = $repoContent
+            if ($repoConfig.PackageLayout -eq 'ModFolder') {
+                $expectedEntries = @(@($repoContent | ForEach-Object { $repoConfig.ModFolderName + '/' + $_ }) + @($repoConfig.ModFolderName + '.mod') | Sort-Object)
+            }
+            Get-ZipEntryList -ZipPath $zipPath | Should -Be $expectedEntries
         }
-        Get-ZipEntryList -ZipPath $zipPath | Should -Be $expectedEntries
     }
 
     It 'deploys twice into the same mod folder without nesting' {
@@ -396,14 +574,17 @@ Describe 'This repository' {
             Set-ItResult -Skipped -Because 'this file runs from the Modding Manager, not from a mod repository'
             return
         }
-        $modDir = New-TestDirectory
-        foreach ($deployRun in 1..2) {
-            & $script:PowerShellExe -NoProfile -ExecutionPolicy Bypass -File $script:BuildScriptPath -Deploy -NoValidate -ModDir $modDir | Out-Null
-            $LASTEXITCODE | Should -Be 0
+        foreach ($repoConfig in $script:RepoConfigs) {
+            $modDir = New-TestDirectory
+            $packArguments = @(Get-PackArguments -RepoConfig $repoConfig)
+            foreach ($deployRun in 1..2) {
+                & $script:PowerShellExe -NoProfile -ExecutionPolicy Bypass -File $script:BuildScriptPath -Deploy -NoValidate -ModDir $modDir @packArguments | Out-Null
+                $LASTEXITCODE | Should -Be 0 -Because "package '$($repoConfig.PackageName)'"
+            }
+            $deployedFolder = Join-Path $modDir $repoConfig.ModFolderName
+            Get-NestedFolderList -Root $deployedFolder | Should -BeNullOrEmpty
+            Get-RelativeFileList -Root $deployedFolder | Should -Be @(Get-ModContentFiles -Config $repoConfig)
         }
-        $deployedFolder = Join-Path $modDir $script:RepoConfig.ModFolderName
-        Get-NestedFolderList -Root $deployedFolder | Should -BeNullOrEmpty
-        Get-RelativeFileList -Root $deployedFolder | Should -Be $script:RepoContent
     }
 
     It 'stages a dry-run Workshop upload of the content only' {
@@ -411,13 +592,16 @@ Describe 'This repository' {
             Set-ItResult -Skipped -Because 'this file runs from the Modding Manager, not from a mod repository'
             return
         }
-        $dryRunOutput = @(& $script:PowerShellExe -NoProfile -ExecutionPolicy Bypass -File $script:BuildScriptPath -PublishSteam -DryRun -NoValidate -SteamUser 'tester' 2>&1 | ForEach-Object { "$_" })
-        $LASTEXITCODE | Should -Be 0
-        $stagedLine = @($dryRunOutput | Where-Object { $_ -match 'Staged content at:' })[0]
-        $stagedLine | Should -Not -BeNullOrEmpty
-        $contentDir = ($stagedLine -replace '^.*Staged content at:\s*', '').Trim()
-        $script:TempRoots.Add((Split-Path -Parent $contentDir))
-        Get-NestedFolderList -Root $contentDir | Should -BeNullOrEmpty
-        Get-RelativeFileList -Root $contentDir | Should -Be $script:RepoContent
+        foreach ($repoConfig in $script:RepoConfigs) {
+            $packArguments = @(Get-PackArguments -RepoConfig $repoConfig)
+            $dryRunOutput = @(& $script:PowerShellExe -NoProfile -ExecutionPolicy Bypass -File $script:BuildScriptPath -PublishSteam -DryRun -NoValidate -SteamUser 'tester' @packArguments 2>&1 | ForEach-Object { "$_" })
+            $LASTEXITCODE | Should -Be 0 -Because "package '$($repoConfig.PackageName)'"
+            $stagedLine = @($dryRunOutput | Where-Object { $_ -match 'Staged content at:' })[0]
+            $stagedLine | Should -Not -BeNullOrEmpty
+            $contentDir = ($stagedLine -replace '^.*Staged content at:\s*', '').Trim()
+            $script:TempRoots.Add((Split-Path -Parent $contentDir))
+            Get-NestedFolderList -Root $contentDir | Should -BeNullOrEmpty
+            Get-RelativeFileList -Root $contentDir | Should -Be @(Get-ModContentFiles -Config $repoConfig)
+        }
     }
 }
