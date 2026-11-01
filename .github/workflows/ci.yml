@@ -16,11 +16,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python for the tests
-        if: ${{ hashFiles('tests/requirements.txt') != '' }}
+      - name: Set up the Python of the local machine
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.13'
+
+      - name: Set up the Node.js of the local machine
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install the Pester of the local machine
+        shell: powershell
+        run: Install-Module -Name Pester -RequiredVersion 6.2.0 -Scope CurrentUser -Force -SkipPublisherCheck
 
       - name: Install the Python packages of the tests
         if: ${{ hashFiles('tests/requirements.txt') != '' }}
