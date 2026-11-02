@@ -118,7 +118,7 @@ AfterAll {
     }
 }
 
-Describe 'Descriptor helpers' {
+Describe 'Descriptor helpers' -Tag 'Engine' {
     It 'reads the descriptor fields, also when supported_version comes before version' {
         $fixtureRoot = New-TestDirectory
         Write-TestFile -Root $fixtureRoot -RelativePath 'descriptor.mod' -Text ("supported_version=`"1.19.*`"`r`nversion=`"2.3`"`r`ntags={`r`n`t`"Historical`"`r`n`t`"Military`"`r`n}`r`nname=`"Some Mod`"`r`nremote_file_id=`"1234567890`"`r`n")
@@ -151,7 +151,7 @@ Describe 'Descriptor helpers' {
     }
 }
 
-Describe 'Parameters of build.ps1' {
+Describe 'Parameters of build.ps1' -Tag 'Engine' {
     It 'passes only the lifecycle parameters of a script on to the engine' {
         function Invoke-BuildScriptProbe {
             param([switch]$Package, [string]$ZipOutput, [string]$Audit)
@@ -163,7 +163,7 @@ Describe 'Parameters of build.ps1' {
     }
 }
 
-Describe 'Structure check of script files' {
+Describe 'Structure check of script files' -Tag 'Engine' {
     It 'accepts balanced braces, a # inside a quoted name and an escaped quote' {
         $problems = Get-ClausewitzSyntaxProblems -Text "FIX = {`n    name = `"Squadron #1`"`n    desc = `"say \`"hi\`"`"`n    # a comment with { and `"`n}`n"
         $problems.Count | Should -Be 0
@@ -185,7 +185,7 @@ Describe 'Structure check of script files' {
     }
 }
 
-Describe 'Content selection and staging' {
+Describe 'Content selection and staging' -Tag 'Engine' {
     It 'selects only the content folders and the descriptor and thumbnail' {
         $config = Get-ModBuildConfig -RepoDir (New-FixtureRepo)
         @(Get-ModContentFiles -Config $config) | Should -Be (Get-FixtureContentList)
@@ -232,7 +232,7 @@ Describe 'Content selection and staging' {
     }
 }
 
-Describe 'Validation' {
+Describe 'Validation' -Tag 'Engine' {
     It 'passes for a clean mod' {
         $config = Get-ModBuildConfig -RepoDir (New-FixtureRepo)
         Invoke-ModValidation -Config $config -SkipParser | Should -BeTrue
@@ -272,7 +272,7 @@ Describe 'Validation' {
     }
 }
 
-Describe 'Lifecycle actions' {
+Describe 'Lifecycle actions' -Tag 'Engine' {
     It 'packages only the content, with forward slashes, in the flat layout' {
         $config = Get-ModBuildConfig -RepoDir (New-FixtureRepo)
         $zipPath = Join-Path (New-TestDirectory) 'package.zip'
@@ -288,6 +288,21 @@ Describe 'Lifecycle actions' {
         Invoke-ModPackage -Config $config -ZipOutput $zipPath | Should -Be 0
         $expectedEntries = @(@(Get-FixtureContentList | ForEach-Object { 'fixture_mod/' + $_ }) + @('fixture_mod.mod') | Sort-Object)
         Get-ZipEntryList -ZipPath $zipPath | Should -Be $expectedEntries
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        $archive = [System.IO.Compression.ZipFile]::OpenRead($zipPath)
+        try {
+            foreach ($contentEntry in @(Get-FixtureContentList)) {
+                $entryStream = $archive.GetEntry('fixture_mod/' + $contentEntry).Open()
+                $entryBytes = [System.IO.MemoryStream]::new()
+                try { $entryStream.CopyTo($entryBytes) } finally { $entryStream.Dispose() }
+                [System.Convert]::ToBase64String($entryBytes.ToArray()) | Should -Be ([System.Convert]::ToBase64String([System.IO.File]::ReadAllBytes((Join-Path $fixtureRoot $contentEntry.Replace('/', '\'))))) -Because $contentEntry
+            }
+            $launcherStream = $archive.GetEntry('fixture_mod.mod').Open()
+            $launcherReader = [System.IO.StreamReader]::new($launcherStream)
+            try { $launcherReader.ReadToEnd() | Should -Match 'path="mod/fixture_mod"' } finally { $launcherReader.Dispose() }
+        } finally {
+            $archive.Dispose()
+        }
     }
 
     It 'refuses to package a development file inside a content folder' {
@@ -327,6 +342,10 @@ Describe 'Lifecycle actions' {
         $contentDir = ($stagedLine -replace '^.*Staged content at:\s*', '').Trim()
         $script:TempRoots.Add((Split-Path -Parent $contentDir))
         Get-RelativeFileList -Root $contentDir | Should -Be (Get-FixtureContentList)
+        $listedLines = @((@($publishOutput | ForEach-Object { "$_" }) -join "`n") -split "`r?`n")
+        foreach ($contentFile in @(Get-FixtureContentList)) {
+            @($listedLines | Where-Object { $_ -eq "  $contentFile" }).Count | Should -Be 1 -Because "the dry run lists $contentFile once"
+        }
         $vdfText = [System.IO.File]::ReadAllText((Join-Path (Split-Path -Parent $contentDir) 'workshop_build.vdf'))
         $vdfText | Should -Match '"publishedfileid" "0"'
         $vdfText | Should -Match '"visibility" "2"'
@@ -347,7 +366,7 @@ Describe 'Lifecycle actions' {
     }
 }
 
-Describe 'Packages' {
+Describe 'Packages' -Tag 'Engine' {
     It 'keeps a repository without packages at its root, and refuses -Pack there' {
         $config = Get-ModBuildConfig -RepoDir (New-FixtureRepo)
         $config.ContentRoot | Should -Be $config.RepoDir
@@ -517,7 +536,7 @@ Describe 'Packages' {
     }
 }
 
-Describe 'Workshop VDF' {
+Describe 'Workshop VDF' -Tag 'Engine' {
     It 'escapes quotes and backslashes and keeps the visibility of an existing item' {
         $vdfText = New-ModWorkshopVdf -ContentDir 'C:\stage\content' -PreviewPath 'C:\stage\content\thumbnail.png' -Title 'My "Mod"' -PublishedFileId '123' -ChangeNote 'Fix C:\path and "quotes"'
         $vdfText | Should -Match ([regex]::Escape('"title" "My \"Mod\""'))
@@ -533,7 +552,7 @@ Describe 'Workshop VDF' {
     }
 }
 
-Describe 'Test runner selection by changed files' {
+Describe 'Test runner selection by changed files' -Tag 'Engine' {
     BeforeAll {
         $script:RunnerText = [System.IO.File]::ReadAllText((Join-Path $PSScriptRoot 'Run-Tests.ps1'))
 
@@ -647,6 +666,41 @@ Describe 'Test runner selection by changed files' {
         $runnerResult = Invoke-Runner -Root $runnerRoot -RunnerArguments @('-Changed')
         $runnerResult.ExitCode | Should -Be 0
         @($runnerResult.Output | Where-Object { $_ -match 'Summary:' })[-1] | Should -Match ([regex]::Escape('1 Passed, 0 Failed, 0 Skipped (changed: Alpha)'))
+    }
+
+    It 'runs the test files in parallel processes and adds up their results, a failing and a broken file included' {
+        $runnerRoot = New-RunnerRepo
+        Write-TestFile -Root $runnerRoot -RelativePath 'tests\Failing.Tests.ps1' -Text "Describe 'Failing' { It 'fails' { 1 | Should -Be 2 }; It 'is skipped' -Skip { } }"
+        Write-TestFile -Root $runnerRoot -RelativePath 'tests\Broken.Tests.ps1' -Text "throw 'broken at discovery'"
+        Write-TestFile -Root $runnerRoot -RelativePath 'tests\Exiting.Tests.ps1' -Text "[Environment]::Exit(3)"
+        $runnerResult = Invoke-Runner -Root $runnerRoot -RunnerArguments @('-ThrottleLimit', '3')
+        $runnerResult.ExitCode | Should -Be 1
+        ($runnerResult.Output -join "`n") | Should -Match 'Processes:\s+3'
+        ($runnerResult.Output -join "`n") | Should -Match 'Expected 2, but got 1'
+        ($runnerResult.Output -join "`n") | Should -Match 'Exiting\.Tests\.ps1: the test process ended with exit code 3 and no result'
+        @($runnerResult.Output | Where-Object { $_ -match 'Summary:' })[-1] | Should -Match ([regex]::Escape('3 Passed, 1 Failed, 1 Skipped, 2 test file(s) failed to run (all suites)'))
+    }
+
+    It 'leaves out the tests tagged Engine, which the Manager runs, in parallel and in one process, unless -EngineTests asks for them' {
+        $runnerRoot = New-RunnerRepo
+        Write-TestFile -Root $runnerRoot -RelativePath 'tests\Alpha.Tests.ps1' -Text "Describe 'Engine' -Tag 'Engine' { It 'tests the engine' { 1 | Should -Be 1 } }; Describe 'This repository' { It 'tests the mod' { 1 | Should -Be 1 } }"
+        $parallelResult = Invoke-Runner -Root $runnerRoot -RunnerArguments @('-ThrottleLimit', '3')
+        ($parallelResult.Output -join "`n") | Should -Match 'Processes:\s+3'
+        ($parallelResult.Output -join "`n") | Should -Match 'tests tagged Engine left out'
+        @($parallelResult.Output | Where-Object { $_ -match 'Summary:' })[-1] | Should -Match ([regex]::Escape('3 Passed, 0 Failed, 0 Skipped (all suites)'))
+        $parallelEngineResult = Invoke-Runner -Root $runnerRoot -RunnerArguments @('-ThrottleLimit', '3', '-EngineTests')
+        @($parallelEngineResult.Output | Where-Object { $_ -match 'Summary:' })[-1] | Should -Match ([regex]::Escape('4 Passed, 0 Failed, 0 Skipped (all suites)'))
+        $serialResult = Invoke-Runner -Root $runnerRoot -RunnerArguments @('-Suite', 'Alpha')
+        @($serialResult.Output | Where-Object { $_ -match 'Summary:' })[-1] | Should -Match ([regex]::Escape('1 Passed, 0 Failed, 0 Skipped (suite: Alpha)'))
+        $serialEngineResult = Invoke-Runner -Root $runnerRoot -RunnerArguments @('-Suite', 'Alpha', '-EngineTests')
+        @($serialEngineResult.Output | Where-Object { $_ -match 'Summary:' })[-1] | Should -Match ([regex]::Escape('2 Passed, 0 Failed, 0 Skipped (suite: Alpha)'))
+    }
+
+    It 'runs the test files one after another in one process with -ThrottleLimit 1' {
+        $runnerResult = Invoke-Runner -Root (New-RunnerRepo) -RunnerArguments @('-ThrottleLimit', '1')
+        $runnerResult.ExitCode | Should -Be 0
+        ($runnerResult.Output -join "`n") | Should -Match 'Processes:\s+1'
+        @($runnerResult.Output | Where-Object { $_ -match 'Summary:' })[-1] | Should -Match ([regex]::Escape('3 Passed, 0 Failed, 0 Skipped (all suites)'))
     }
 }
 

@@ -476,7 +476,7 @@ function Copy-ModContent {
             continue
         }
         $keptNames.Add($contentDir)
-        & robocopy.exe $sourceDir (Join-Path $destinationRoot $contentDir) /MIR /XF .gitkeep /R:1 /W:1 /NDL /NP /NFL /NJH /NJS | Out-Null
+        & robocopy.exe $sourceDir (Join-Path $destinationRoot $contentDir) /MIR /MT:8 /XF .gitkeep /R:1 /W:1 /NDL /NP /NFL /NJH /NJS | Out-Null
         if ($LASTEXITCODE -ge 8) {
             throw "robocopy failed for '$contentDir' with exit code $LASTEXITCODE"
         }
@@ -579,12 +579,15 @@ function New-ModTempDirectory {
 function New-ModZipArchive {
     param(
         [Parameter(Mandatory = $true)][string]$SourceDir,
-        [Parameter(Mandatory = $true)][string]$ZipPath
+        [Parameter(Mandatory = $true)][string]$ZipPath,
+        [string]$StagedContentDir,
+        [string]$ContentRoot
     )
 
     Add-Type -AssemblyName System.IO.Compression
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $sourceRoot = (Get-Item -LiteralPath $SourceDir).FullName.TrimEnd('\')
+    $stagedContentPrefix = if ($StagedContentDir -and $ContentRoot) { (Get-Item -LiteralPath $StagedContentDir).FullName.TrimEnd('\') + '\' } else { $null }
     if (Test-Path -LiteralPath $ZipPath) {
         Remove-Item -LiteralPath $ZipPath -Force
     }
@@ -592,7 +595,11 @@ function New-ModZipArchive {
     try {
         foreach ($sourceFile in @(Get-ChildItem -LiteralPath $sourceRoot -Recurse -File -Force | Sort-Object FullName)) {
             $entryName = $sourceFile.FullName.Substring($sourceRoot.Length + 1).Replace('\', '/')
-            [void][System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, $sourceFile.FullName, $entryName, [System.IO.Compression.CompressionLevel]::Optimal)
+            $readPath = $sourceFile.FullName
+            if ($stagedContentPrefix -and $readPath.StartsWith($stagedContentPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+                $readPath = Join-Path $ContentRoot $readPath.Substring($stagedContentPrefix.Length)
+            }
+            [void][System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, $readPath, $entryName, [System.IO.Compression.CompressionLevel]::Optimal)
         }
     } finally {
         $archive.Dispose()
@@ -932,7 +939,7 @@ function Invoke-ModPackage {
             $launcherContent = New-LauncherModContent -DescriptorPath $Config.DescriptorPath -TargetModPath ('mod/' + $Config.ModFolderName)
             [System.IO.File]::WriteAllText((Join-Path $stageRoot ($Config.ModFolderName + '.mod')), $launcherContent, (Get-ModUtf8NoBom))
         }
-        New-ModZipArchive -SourceDir $stageRoot -ZipPath $zipTarget
+        New-ModZipArchive -SourceDir $stageRoot -ZipPath $zipTarget -StagedContentDir $contentDir -ContentRoot $Config.ContentRoot
         $packagedCount = @(Get-ChildItem -LiteralPath $stageRoot -Recurse -File -Force).Count
         $archiveSize = [Math]::Round((Get-Item -LiteralPath $zipTarget).Length / 1KB, 1)
         Write-Ok "Package created: $zipTarget ($packagedCount file(s), $archiveSize KB)"
@@ -1027,9 +1034,10 @@ function Invoke-ModPublish {
             Write-Step '[DryRun] Workshop VDF:'
             Write-Host $vdfContent -ForegroundColor Yellow
             Write-Step '[DryRun] Files that would be uploaded:'
-            foreach ($stagedFile in @(Get-ChildItem -LiteralPath $contentDir -Recurse -File -Force | Sort-Object FullName)) {
-                Write-Host ('  ' + $stagedFile.FullName.Substring($contentDir.Length + 1).Replace('\', '/')) -ForegroundColor Gray
+            $stagedLines = foreach ($stagedFile in @(Get-ChildItem -LiteralPath $contentDir -Recurse -File -Force | Sort-Object FullName)) {
+                '  ' + $stagedFile.FullName.Substring($contentDir.Length + 1).Replace('\', '/')
             }
+            Write-Host (@($stagedLines) -join [Environment]::NewLine) -ForegroundColor Gray
             Write-Step '[DryRun] Command:'
             Write-Host ('& "' + $steamCmd + '" +login ' + $resolvedUser + ' +workshop_build_item "' + $vdfPath + '" +quit') -ForegroundColor Cyan
             Write-Ok 'Dry run: nothing was uploaded. The stage is kept for inspection.'
