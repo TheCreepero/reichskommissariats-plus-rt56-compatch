@@ -400,7 +400,19 @@ function Get-RkPlusStateReferences {
         if ($value -eq '{') {
             $keyToken = if ($previous -and $previous.Value -eq '=' -and $beforePrevious) { $beforePrevious } else { $null }
             $key = if ($keyToken) { $keyToken.Value } else { '' }
-            $frame = New-RkPlusFrame -Key $key -KeyToken $keyToken -OpenIndex $token.Index -Parent $current -Depth ($current.Depth + 1)
+            $ordinal = 1 + [int]$current.ChildKeyCounts[$key]
+            $current.ChildKeyCounts[$key] = $ordinal
+            $frame = [pscustomobject]@{
+                Key            = $key
+                KeyIndex       = if ($keyToken) { $keyToken.Index } else { $token.Index }
+                OpenIndex      = $token.Index
+                CloseEnd       = -1
+                Id             = $null
+                Parent         = $current
+                Depth          = $current.Depth + 1
+                Ordinal        = $ordinal
+                ChildKeyCounts = @{}
+            }
             if ($keyToken -and $script:StateIdPattern.IsMatch($key) -and ($script:NonStateBlockParents -notcontains $current.Key)) {
                 $references.Add([pscustomobject]@{
                     Kind        = 'Scope'

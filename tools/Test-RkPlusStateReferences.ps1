@@ -159,18 +159,32 @@ function Get-Section {
 }
 
 function Add-SectionReferences {
-    param([hashtable]$Sections, [string]$Text, [string]$RelativePath, [string]$Side)
+    param([hashtable]$Sections, [string]$Text, [string]$RelativePath, [string]$Side, $Parsed)
 
-    $parsed = Get-RkPlusStateReferences -Text $Text -MaxStateId $mapStates.Count
     $scopeFrames = [System.Collections.Generic.HashSet[object]]::new()
     foreach ($reference in $parsed.References) {
         if ($reference.Kind -eq 'Scope') {
             [void]$scopeFrames.Add($reference.Frame)
         }
     }
+    $sectionByParentFrame = @{}
+    $singleValuedByRule = @{}
     foreach ($reference in $parsed.References) {
-        $section = Get-Section -Sections $Sections -Location (Get-RkPlusDefinitionKey -Frame $reference.Parent -RelativePath $RelativePath -FallbackSection $reference.Key)
-        $runsOnce = (Test-RkPlusSingleValuedReference -Reference $reference) -or ($reference.Kind -eq 'Scope' -and -not (Test-RkPlusRepeatableBody -Text $Text -Frame $reference.Frame))
+        $parentFrameKey = if ($reference.Parent.Depth -ge 0) { $reference.Parent.OpenIndex } else { "root|$($reference.Key)" }
+        $section = $sectionByParentFrame[$parentFrameKey]
+        if ($null -eq $section) {
+            $section = Get-Section -Sections $Sections -Location (Get-RkPlusDefinitionKey -Frame $reference.Parent -RelativePath $RelativePath -FallbackSection $reference.Key)
+            $sectionByParentFrame[$parentFrameKey] = $section
+        }
+        if ($reference.Kind -eq 'Scope') {
+            $runsOnce = -not (Test-RkPlusRepeatableBody -Text $Text -Frame $reference.Frame)
+        } else {
+            $ruleKey = "$($reference.Kind)|$($reference.Key)|$($reference.Parent.Key)"
+            if (-not $singleValuedByRule.ContainsKey($ruleKey)) {
+                $singleValuedByRule[$ruleKey] = Test-RkPlusSingleValuedReference -Reference $reference
+            }
+            $runsOnce = $singleValuedByRule[$ruleKey]
+        }
         $setName = if ($runsOnce) { "Single$Side" } else { $Side }
         [void]$section.$setName.Add($reference.Id)
     }
@@ -251,10 +265,12 @@ function Measure-Section {
         }
     }
 
-    $expectedProvinces = @($Section.OriginalProvinces | ForEach-Object { if ($null -ne $translation.Forward[$_.Id]) { $translation.Forward[$_.Id] } else { $_.Id } } | Sort-Object -Unique)
-    $currentProvinces = @($Section.CurrentProvinces | ForEach-Object Id | Sort-Object -Unique)
-    if (($expectedProvinces -join ',') -ne ($currentProvinces -join ',')) {
-        $wrongProvinces.Add("province ids $($currentProvinces -join ',') where the map has $($expectedProvinces -join ',')")
+    if ($Section.OriginalProvinces.Count -gt 0 -or $Section.CurrentProvinces.Count -gt 0) {
+        $expectedProvinces = @($Section.OriginalProvinces | ForEach-Object { if ($null -ne $translation.Forward[$_.Id]) { $translation.Forward[$_.Id] } else { $_.Id } } | Sort-Object -Unique)
+        $currentProvinces = @($Section.CurrentProvinces | ForEach-Object Id | Sort-Object -Unique)
+        if (($expectedProvinces -join ',') -ne ($currentProvinces -join ',')) {
+            $wrongProvinces.Add("province ids $($currentProvinces -join ',') where the map has $($expectedProvinces -join ',')")
+        }
     }
     foreach ($province in $Section.CurrentProvinces) {
         if ($null -eq $province.Scope -or $mapOwnerOfProvince[$province.Id] -eq $province.Scope) {
@@ -311,12 +327,14 @@ foreach ($folder in (Get-RkPlusAuditedFolders)) {
         $currentText = if ($loadedFrom -eq 'compatch') { [System.IO.File]::ReadAllText($compatchPath) } else { $originalText }
 
         $sections = @{}
-        [void](Add-SectionReferences -Sections $sections -Text $originalText -RelativePath $relativePath -Side 'Original')
+        $originalParsed = Get-RkPlusStateReferences -Text $originalText -MaxStateId $mapStates.Count
+        [void](Add-SectionReferences -Sections $sections -Text $originalText -RelativePath $relativePath -Side 'Original' -Parsed $originalParsed)
         if ($sections.Count -eq 0) {
             continue
         }
         $auditedFileCount++
-        foreach ($row in @(Add-SectionReferences -Sections $sections -Text $currentText -RelativePath $relativePath -Side 'Current')) {
+        $currentParsed = if ($currentText -ceq $originalText) { $originalParsed } else { Get-RkPlusStateReferences -Text $currentText -MaxStateId $mapStates.Count }
+        foreach ($row in @(Add-SectionReferences -Sections $sections -Text $currentText -RelativePath $relativePath -Side 'Current' -Parsed $currentParsed)) {
             $unclassifiedRows.Add([pscustomobject]@{ File = $relativePath; Key = $row.Key; Id = $row.Id; Parent = $row.Parent })
         }
 
