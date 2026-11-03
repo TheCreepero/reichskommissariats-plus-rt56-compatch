@@ -731,6 +731,14 @@ function Get-ModWorkshopDescription {
     return $null
 }
 
+function Get-ModWorkshopDescriptionSize {
+    param([Parameter(Mandatory = $true)][AllowEmptyString()][string]$Description)
+
+    $uploadedText = ConvertTo-ModTypographicQuotes -Text ($Description -replace "`r`n", "`n")
+    $byteCount = [System.Text.Encoding]::UTF8.GetByteCount($uploadedText)
+    return [PSCustomObject]@{ Bytes = $byteCount; Limit = 8000; Budget = 7500 }
+}
+
 function Set-ModDescriptorRemoteFileId {
     param(
         [Parameter(Mandatory = $true)][string]$DescriptorPath,
@@ -1040,7 +1048,15 @@ function Invoke-ModPublish {
             Write-Err 'No ```bbcode block in WORKSHOP_DESCRIPTION_GUIDELINES.md to use as the Workshop description.'
             return 1
         }
-        Write-Info "The Workshop description is replaced with the bbcode block of WORKSHOP_DESCRIPTION_GUIDELINES.md ($($description.Length) characters)."
+        $descriptionSize = Get-ModWorkshopDescriptionSize -Description $description
+        if ($descriptionSize.Bytes -gt $descriptionSize.Limit) {
+            Write-Err "The bbcode block of WORKSHOP_DESCRIPTION_GUIDELINES.md is $($descriptionSize.Bytes) bytes as uploaded, and Steam refuses a description over $($descriptionSize.Limit) with 'Invalid Parameter'. Shorten it under $($descriptionSize.Budget), or upload without -UpdateDescription."
+            return 1
+        }
+        if ($descriptionSize.Bytes -gt $descriptionSize.Budget) {
+            Write-Warn "The bbcode block of WORKSHOP_DESCRIPTION_GUIDELINES.md is $($descriptionSize.Bytes) bytes as uploaded, over the budget of $($descriptionSize.Budget) under Steam's cap of $($descriptionSize.Limit)."
+        }
+        Write-Info "The Workshop description is replaced with the bbcode block of WORKSHOP_DESCRIPTION_GUIDELINES.md ($($descriptionSize.Bytes) of Steam's $($descriptionSize.Limit) bytes)."
     }
     $tagQuoteLines = @(Get-ModBbcodeTagQuoteLines -Text ([string]$description + "`n" + $resolvedNote))
     if ($tagQuoteLines.Count -gt 0) {

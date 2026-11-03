@@ -480,6 +480,29 @@ Describe 'Packages' -Tag 'Engine' {
         $errorLines[0] | Should -BeLike '*Line: See `[url="https://example.com"`]the wiki`[/url`].'
     }
 
+    It 'measures a description in UTF-8 bytes as uploaded: LF line ends and typographic quotes' {
+        (Get-ModWorkshopDescriptionSize -Description "ab`r`ncd").Bytes | Should -Be 5
+        (Get-ModWorkshopDescriptionSize -Description 'Mannerheim "Suomi"').Bytes | Should -Be (18 + 4)
+        (Get-ModWorkshopDescriptionSize -Description ([string][char]0x00E4)).Bytes | Should -Be 2
+    }
+
+    It 'refuses to upload a description over 8,000 bytes and warns above 7,500' {
+        $fixtureRoot = New-FixturePackRepo
+        Write-TestFile -Root $fixtureRoot -RelativePath 'packs\alpha\WORKSHOP_DESCRIPTION_GUIDELINES.md' -Text ("# alpha`r`n`r`n``````bbcode`r`n" + ([string][char]0x00E4 * 4001) + "`r`n```````r`n")
+        $config = Get-ModBuildConfig -RepoDir $fixtureRoot -PackageName 'alpha'
+        $publishOutput = @(Invoke-ModPublish -Config $config -DryRun -UpdateDescription -SteamUser 'tester' 6>&1)
+        [int]$publishOutput[-1] | Should -Be 1
+        @($publishOutput | ForEach-Object { "$_" } | Where-Object { $_ -match '\[ERROR\].*8002 bytes.*over 8000' }).Count | Should -Be 1
+        @($publishOutput | ForEach-Object { "$_" } | Where-Object { $_ -match 'Staged content at:' }).Count | Should -Be 0
+
+        Write-TestFile -Root $fixtureRoot -RelativePath 'packs\alpha\WORKSHOP_DESCRIPTION_GUIDELINES.md' -Text ("# alpha`r`n`r`n``````bbcode`r`n" + ('a' * 7600) + "`r`n```````r`n")
+        $publishOutput = @(Invoke-ModPublish -Config $config -DryRun -UpdateDescription -SteamUser 'tester' 6>&1)
+        [int]$publishOutput[-1] | Should -Be 0
+        $stagedLine = @($publishOutput | ForEach-Object { "$_" } | Where-Object { $_ -match 'Staged content at:' })[0]
+        $script:TempRoots.Add((Split-Path -Parent (($stagedLine -replace '^.*Staged content at:\s*', '').Trim())))
+        @($publishOutput | ForEach-Object { "$_" } | Where-Object { $_ -match '\[WARN\].*7600 bytes.*budget of 7500' }).Count | Should -Be 1
+    }
+
     It 'passes -Pack on to the engine' {
         function Invoke-PackProbe {
             param([switch]$Deploy, [string]$Pack, [string]$Generate)

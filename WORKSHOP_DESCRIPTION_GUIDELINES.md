@@ -7,7 +7,7 @@ This document provides formatting rules, length limits, and reference templates 
 ## Core Rules & Invariants
 
 1. **No Emojis**: Strictly avoid emojis anywhere in the description text.
-2. **Character Limits**: Steam Workshop descriptions have a max limit of ~17,000 raw BBCode characters. Keep bullet points concise and direct.
+2. **Length**: Steam caps descriptions at 8,000 characters of raw BBCode (a longer one fails the upload with "Invalid Parameter"); stay under ~7,500. Keep bullet points concise and direct.
 3. **No Planned Section**: Do not include speculative 'Planned' sections in the public description.
 4. **Valid Steam BBCode**:
    - Headers: `[h1]Title[/h1]`
