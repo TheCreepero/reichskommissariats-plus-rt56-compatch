@@ -740,6 +740,11 @@ Describe 'This repository' {
             @{ Source = 'Scripts\Build\Run-Tests.ps1'; Target = 'tests\Run-Tests.ps1' },
             @{ Source = 'Scripts\Build\ci.yml'; Target = '.github\workflows\ci.yml' }
         )
+        foreach ($groupName in @(Get-ModSharedToolGroups -RepoPath $script:RepoRoot)) {
+            foreach ($sharedFile in @(Get-ModSharedToolFiles -ManagerRoot $managerRoot -GroupName $groupName)) {
+                $scaffoldPairs += @{ Source = $sharedFile.Source.Substring($managerRoot.TrimEnd('\').Length + 1); Target = $sharedFile.Target }
+            }
+        }
         $staleTargets = foreach ($scaffoldPair in $scaffoldPairs) {
             $targetPath = Join-Path $script:RepoRoot $scaffoldPair.Target
             if (-not (Test-Path -LiteralPath $targetPath) -or (Get-ScaffoldNormalizedText -Path $targetPath) -cne (Get-ScaffoldNormalizedText -Path (Join-Path $managerRoot $scaffoldPair.Source))) {

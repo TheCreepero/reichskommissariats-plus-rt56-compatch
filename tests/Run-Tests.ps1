@@ -76,9 +76,10 @@ function Get-ChangedRepoPaths {
 
 function Get-AddedSuiteGlobMap {
     return [ordered]@{
-        BuildEngine = @('build.ps1', 'tools/HoiModBuild.ps1', 'tools/HoiModBuild.json', 'tests/Run-Tests.ps1')
-        Descriptor  = @('descriptor.mod', 'thumbnail.png')
-        Knowledge   = @('*.md', '*.ps1', '*.py', 'docs/**', 'wiki/**', '.claude/**', '.agents/**')
+        BuildEngine  = @('build.ps1', 'tools/HoiModBuild.ps1', 'tools/HoiModBuild.json', 'tests/Run-Tests.ps1')
+        Descriptor   = @('descriptor.mod', 'thumbnail.png')
+        ImageSources = @('tools/HoiImageSources.ps1', 'tests/fixtures/image-sources/**')
+        Knowledge    = @('*.md', '*.ps1', '*.py', 'docs/**', 'wiki/**', '.claude/**', '.agents/**')
     }
 }
 

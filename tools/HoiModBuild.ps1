@@ -173,6 +173,51 @@ function Get-ModManagerRoot {
     return $null
 }
 
+function Get-ModSharedToolGroupNames {
+    return @('image-sources')
+}
+
+function Get-ModSharedToolGroups {
+    param([Parameter(Mandatory = $true)][string]$RepoPath)
+
+    $settingsPath = Join-Path $RepoPath 'tools\HoiModBuild.json'
+    if (-not (Test-Path -LiteralPath $settingsPath)) {
+        return @()
+    }
+    $settings = [System.IO.File]::ReadAllText($settingsPath, [System.Text.Encoding]::UTF8) | ConvertFrom-Json
+    if (-not $settings.PSObject.Properties['sharedTools'] -or $null -eq $settings.sharedTools) {
+        return @()
+    }
+    $groupNames = @($settings.sharedTools | ForEach-Object { [string]$_ })
+    foreach ($groupName in $groupNames) {
+        if ((Get-ModSharedToolGroupNames) -notcontains $groupName) {
+            throw "tools\HoiModBuild.json: sharedTools names '$groupName'; the shared tool groups are: $((Get-ModSharedToolGroupNames) -join ', ')"
+        }
+    }
+    return $groupNames
+}
+
+function Get-ModSharedToolFiles {
+    param(
+        [Parameter(Mandatory = $true)][string]$ManagerRoot,
+        [Parameter(Mandatory = $true)][string]$GroupName
+    )
+
+    if ($GroupName -ne 'image-sources') {
+        throw "unknown shared tool group '$GroupName'; the groups are: $((Get-ModSharedToolGroupNames) -join ', ')"
+    }
+    $groupRoot = Join-Path $ManagerRoot 'Scripts\ImageSources'
+    $sharedFiles = [System.Collections.Generic.List[PSObject]]::new()
+    $sharedFiles.Add([PSCustomObject]@{ Name = 'image sources'; Source = (Join-Path $groupRoot 'HoiImageSources.ps1'); Target = 'tools\HoiImageSources.ps1'; DenyTarget = 'tools\HoiImageSources.ps1'; OrphanRoot = '' })
+    $sharedFiles.Add([PSCustomObject]@{ Name = 'image sources tests'; Source = (Join-Path $groupRoot 'HoiImageSources.Tests.ps1'); Target = 'tests\ImageSources.Tests.ps1'; DenyTarget = 'tests\ImageSources.Tests.ps1'; OrphanRoot = '' })
+    $fixtureRoot = Join-Path $groupRoot 'fixtures'
+    foreach ($fixtureFile in @(Get-ChildItem -LiteralPath $fixtureRoot -Recurse -File | Sort-Object FullName)) {
+        $relativeFixturePath = $fixtureFile.FullName.Substring($fixtureRoot.Length + 1)
+        $sharedFiles.Add([PSCustomObject]@{ Name = ('image sources fixture ' + $relativeFixturePath.Replace('\', '/')); Source = $fixtureFile.FullName; Target = ('tests\fixtures\image-sources\' + $relativeFixturePath); DenyTarget = 'tests\fixtures\image-sources\**'; OrphanRoot = 'tests\fixtures\image-sources' })
+    }
+    return $sharedFiles.ToArray()
+}
+
 function Get-ModMetadata {
     param([Parameter(Mandatory = $true)][string]$Path)
 
