@@ -724,9 +724,16 @@ function Get-ModWorkshopDescription {
         return $null
     }
     $guidelinesText = [System.IO.File]::ReadAllText($Config.GuidelinesPath, [System.Text.Encoding]::UTF8)
-    $bbcodeMatch = [regex]::Match($guidelinesText, '(?ms)```bbcode\s*\r?\n(.*?)\r?\n```')
+    return (Get-ModWorkshopDescriptionFromText -GuidelinesText $guidelinesText)
+}
+
+function Get-ModWorkshopDescriptionFromText {
+    param([Parameter(Mandatory = $true)][AllowEmptyString()][string]$GuidelinesText)
+
+    $bbcodeMatch = [regex]::Match($GuidelinesText, '(?ms)```bbcode\s*\r?\n(.*?)\r?\n```')
     if ($bbcodeMatch.Success) {
-        return $bbcodeMatch.Groups[1].Value
+        $descriptionText = [regex]::Replace($bbcodeMatch.Groups[1].Value, '\r?\n[ \t]*<!-- cross-links:(?:begin|end) -->[ \t]*\z', '')
+        return [regex]::Replace($descriptionText, '(?m)^[ \t]*<!-- cross-links:(?:begin|end) -->[ \t]*(?:\r?\n|\z)', '')
     }
     return $null
 }

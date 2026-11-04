@@ -149,6 +149,22 @@ Describe 'Descriptor helpers' -Tag 'Engine' {
         $descriptorText | Should -Match 'remote_file_id="222"'
         ([regex]::Matches($descriptorText, 'remote_file_id')).Count | Should -Be 1
     }
+
+    It 'leaves the cross-link marker lines out of the description and keeps the text between them' {
+        $fixtureRoot = New-TestDirectory
+        $guidelinesPath = Join-Path $fixtureRoot 'WORKSHOP_DESCRIPTION_GUIDELINES.md'
+        $descriptionLines = @('Intro line.', '<!-- cross-links:begin -->', '[b]More from the author[/b]', '[list]', '[*]One', '[/list]', '<!-- cross-links:end -->', '[h1]Info[/h1]', 'Last line <!-- cross-links:end --> stays.')
+        Write-TestFile -Root $fixtureRoot -RelativePath 'WORKSHOP_DESCRIPTION_GUIDELINES.md' -Text ("# Guidelines`r`n`r`n``````bbcode`r`n" + ($descriptionLines -join "`r`n") + "`r`n```````r`n")
+        $description = Get-ModWorkshopDescription -Config ([PSCustomObject]@{ GuidelinesPath = $guidelinesPath })
+        $description | Should -Be ((@('Intro line.', '[b]More from the author[/b]', '[list]', '[*]One', '[/list]', '[h1]Info[/h1]', 'Last line <!-- cross-links:end --> stays.')) -join "`r`n")
+    }
+
+    It 'leaves a marker line at the very end of the description out as well' {
+        $fixtureRoot = New-TestDirectory
+        $guidelinesPath = Join-Path $fixtureRoot 'WORKSHOP_DESCRIPTION_GUIDELINES.md'
+        Write-TestFile -Root $fixtureRoot -RelativePath 'WORKSHOP_DESCRIPTION_GUIDELINES.md' -Text "``````bbcode`r`nText`r`n<!-- cross-links:begin -->`r`nBlock`r`n<!-- cross-links:end -->`r`n```````r`n"
+        (Get-ModWorkshopDescription -Config ([PSCustomObject]@{ GuidelinesPath = $guidelinesPath })) | Should -Be "Text`r`nBlock"
+    }
 }
 
 Describe 'Parameters of build.ps1' -Tag 'Engine' {
