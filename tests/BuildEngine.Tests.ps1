@@ -159,6 +159,38 @@ Describe 'Descriptor helpers' -Tag 'Engine' {
         $description | Should -Be ((@('Intro line.', '[b]More from the author[/b]', '[list]', '[*]One', '[/list]', '[h1]Info[/h1]', 'Last line <!-- cross-links:end --> stays.')) -join "`r`n")
     }
 
+    It 'leaves the region marker lines out of the description and keeps the text between them' {
+        $fixtureRoot = New-TestDirectory
+        $guidelinesPath = Join-Path $fixtureRoot 'WORKSHOP_DESCRIPTION_GUIDELINES.md'
+        $descriptionLines = @('<!-- region:image:hero -->', '[img]https://i.imgur.com/a.png[/img]', '<!-- /region -->', 'Intro line.', '<!-- region:info:rt56,ironman -->', '- Works with Road to 56.', '<!-- /region -->', 'Text <!-- region:inline --> stays.')
+        Write-TestFile -Root $fixtureRoot -RelativePath 'WORKSHOP_DESCRIPTION_GUIDELINES.md' -Text ("# Guidelines`r`n`r`n``````bbcode`r`n" + ($descriptionLines -join "`r`n") + "`r`n```````r`n")
+        $description = Get-ModWorkshopDescription -Config ([PSCustomObject]@{ GuidelinesPath = $guidelinesPath })
+        $description | Should -Be ((@('[img]https://i.imgur.com/a.png[/img]', 'Intro line.', '- Works with Road to 56.', 'Text <!-- region:inline --> stays.')) -join "`r`n")
+    }
+
+    It 'leaves an empty region and a region at the very end out' {
+        $fixtureRoot = New-TestDirectory
+        $guidelinesPath = Join-Path $fixtureRoot 'WORKSHOP_DESCRIPTION_GUIDELINES.md'
+        Write-TestFile -Root $fixtureRoot -RelativePath 'WORKSHOP_DESCRIPTION_GUIDELINES.md' -Text "``````bbcode`r`nText`r`n<!-- region:image:strip-info -->`r`n<!-- /region -->`r`n<!-- region:image:button-wiki -->`r`n[img]x[/img]`r`n<!-- /region -->`r`n```````r`n"
+        (Get-ModWorkshopDescription -Config ([PSCustomObject]@{ GuidelinesPath = $guidelinesPath })) | Should -Be "Text`r`n[img]x[/img]"
+    }
+
+    It 'keeps a marker that ends a line of text, and only drops a marker that stands alone on its line' {
+        $fixtureRoot = New-TestDirectory
+        $guidelinesPath = Join-Path $fixtureRoot 'WORKSHOP_DESCRIPTION_GUIDELINES.md'
+        Write-TestFile -Root $fixtureRoot -RelativePath 'WORKSHOP_DESCRIPTION_GUIDELINES.md' -Text "``````bbcode`r`nLine one <!-- /region -->`r`nLine two <!-- region:x -->`r`n<!-- region:y -->`r`nLine three <!-- /region -->`r`n```````r`n"
+        (Get-ModWorkshopDescription -Config ([PSCustomObject]@{ GuidelinesPath = $guidelinesPath })) | Should -Be "Line one <!-- /region -->`r`nLine two <!-- region:x -->`r`nLine three <!-- /region -->"
+    }
+
+    It 'leaves an empty or an unclosed region at the very end out without a stray line break' {
+        $fixtureRoot = New-TestDirectory
+        $guidelinesPath = Join-Path $fixtureRoot 'WORKSHOP_DESCRIPTION_GUIDELINES.md'
+        Write-TestFile -Root $fixtureRoot -RelativePath 'WORKSHOP_DESCRIPTION_GUIDELINES.md' -Text "``````bbcode`r`nA`r`n<!-- region:image:x -->`r`n<!-- /region -->`r`n```````r`n"
+        (Get-ModWorkshopDescription -Config ([PSCustomObject]@{ GuidelinesPath = $guidelinesPath })) | Should -Be 'A'
+        Write-TestFile -Root $fixtureRoot -RelativePath 'WORKSHOP_DESCRIPTION_GUIDELINES.md' -Text "``````bbcode`r`nA`r`n<!-- region:image:x -->`r`n```````r`n"
+        (Get-ModWorkshopDescription -Config ([PSCustomObject]@{ GuidelinesPath = $guidelinesPath })) | Should -Be 'A'
+    }
+
     It 'leaves a marker line at the very end of the description out as well' {
         $fixtureRoot = New-TestDirectory
         $guidelinesPath = Join-Path $fixtureRoot 'WORKSHOP_DESCRIPTION_GUIDELINES.md'
@@ -441,6 +473,37 @@ Describe 'Packages' -Tag 'Engine' {
         Invoke-ModBuildAction -Config $config -PublishSteam -DryRun -NoValidate -SteamUser 'tester' | Select-Object -Last 1 | Should -Be 1
         Invoke-ModBuildAction -Config $config -Package -NoValidate -ZipOutput 'one.zip' | Select-Object -Last 1 | Should -Be 1
         Invoke-ModBuildAction -Config $config -Package -NoValidate -Pack 'gamma' | Select-Object -Last 1 | Should -Be 1
+    }
+
+    It 'finds a mod that the Manager registry marks with publish false, by absolute or relative path, and no other' {
+        $managerRoot = New-TestDirectory
+        $localRepo = Join-Path $managerRoot 'mods\local-mod'
+        $publishedRepo = Join-Path $managerRoot 'mods\published-mod'
+        $unlistedRepo = Join-Path $managerRoot 'mods\unlisted-mod'
+        foreach ($repoPath in @($localRepo, $publishedRepo, $unlistedRepo)) {
+            Write-TestFile -Root $repoPath -RelativePath 'descriptor.mod' -Text "name=`"Fixture`"`r`n"
+        }
+        $registryText = ConvertTo-Json -InputObject @(
+            [ordered]@{ modName = 'Local'; localPath = 'mods\local-mod'; publish = $false },
+            [ordered]@{ modName = 'Published'; localPath = $publishedRepo; publish = $true },
+            [ordered]@{ modName = 'Plain'; localPath = 'mods\plain-mod' }
+        )
+        Write-TestFile -Root $managerRoot -RelativePath 'Config\mods_registry.json' -Text $registryText
+        Test-ModRegisteredLocalOnly -Config (Get-ModBuildConfig -RepoDir $localRepo) -ManagerRoot $managerRoot | Should -BeTrue
+        Test-ModRegisteredLocalOnly -Config (Get-ModBuildConfig -RepoDir $publishedRepo) -ManagerRoot $managerRoot | Should -BeFalse
+        Test-ModRegisteredLocalOnly -Config (Get-ModBuildConfig -RepoDir $unlistedRepo) -ManagerRoot $managerRoot | Should -BeFalse
+    }
+
+    It 'does not treat a mod as local only when no Manager root is found' {
+        $repo = New-FixtureRepo
+        Test-ModRegisteredLocalOnly -Config (Get-ModBuildConfig -RepoDir $repo) -ManagerRoot '' | Should -BeFalse
+    }
+
+    It 'refuses to upload a mod that is registered as local only' {
+        Mock Test-ModRegisteredLocalOnly { $true }
+        $config = Get-ModBuildConfig -RepoDir (New-FixtureRepo)
+        Invoke-ModPublish -Config $config -DryRun -SteamUser 'tester' | Select-Object -Last 1 | Should -Be 1
+        Should -Invoke Test-ModRegisteredLocalOnly -Times 1 -Exactly
     }
 
     It 'deploys and DevLinks one package from its own root' {
@@ -851,6 +914,9 @@ Describe 'This repository' {
             return
         }
         foreach ($repoConfig in $script:RepoConfigs) {
+            if (Test-ModRegisteredLocalOnly -Config $repoConfig) {
+                continue
+            }
             $packArguments = @(Get-PackArguments -RepoConfig $repoConfig)
             $dryRunOutput = @(& $script:PowerShellExe -NoProfile -ExecutionPolicy Bypass -File $script:BuildScriptPath -PublishSteam -DryRun -NoValidate -SteamUser 'tester' @packArguments 2>&1 | ForEach-Object { "$_" })
             $LASTEXITCODE | Should -Be 0 -Because "package '$($repoConfig.PackageName)'"

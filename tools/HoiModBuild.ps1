@@ -733,7 +733,8 @@ function Get-ModWorkshopDescriptionFromText {
     $bbcodeMatch = [regex]::Match($GuidelinesText, '(?ms)```bbcode\s*\r?\n(.*?)\r?\n```')
     if ($bbcodeMatch.Success) {
         $descriptionText = [regex]::Replace($bbcodeMatch.Groups[1].Value, '\r?\n[ \t]*<!-- cross-links:(?:begin|end) -->[ \t]*\z', '')
-        return [regex]::Replace($descriptionText, '(?m)^[ \t]*<!-- cross-links:(?:begin|end) -->[ \t]*(?:\r?\n|\z)', '')
+        $withoutMarkers = [regex]::Replace($descriptionText, '(?m)^[ \t]*<!-- (?:cross-links:(?:begin|end)|/?region(?::[^>]*?)?) -->[ \t]*(?:\r?\n|\z)', '')
+        return $withoutMarkers.TrimEnd([char]13, [char]10)
     }
     return $null
 }
@@ -762,18 +763,16 @@ function Set-ModDescriptorRemoteFileId {
     [System.IO.File]::WriteAllText($DescriptorPath, $descriptorText, (Get-ModUtf8NoBom))
 }
 
-function Set-ModRegistryWorkshopId {
+function Test-ModRegisteredLocalOnly {
     param(
         [Parameter(Mandatory = $true)]$Config,
-        [Parameter(Mandatory = $true)][string]$RemoteFileId
+        [string]$ManagerRoot = (Get-ModManagerRoot)
     )
 
-    $managerRoot = Get-ModManagerRoot
-    if (-not $managerRoot) {
+    if (-not $ManagerRoot) {
         return $false
     }
-    $registryPath = Join-Path $managerRoot 'Config\mods_registry.json'
-    $parsedRegistry = [System.IO.File]::ReadAllText($registryPath, [System.Text.Encoding]::UTF8) | ConvertFrom-Json
+    $parsedRegistry = [System.IO.File]::ReadAllText((Join-Path $ManagerRoot 'Config\mods_registry.json'), [System.Text.Encoding]::UTF8) | ConvertFrom-Json
     $registryEntries = [System.Collections.Generic.List[PSObject]]::new()
     foreach ($registryItem in $parsedRegistry) {
         if ($registryItem.PSObject.Properties['value']) {
@@ -784,21 +783,17 @@ function Set-ModRegistryWorkshopId {
             $registryEntries.Add($registryItem)
         }
     }
-    $entryUpdated = $false
     foreach ($registryEntry in $registryEntries) {
         $entryPath = ([string]$registryEntry.localPath).TrimEnd('\')
         if (-not [System.IO.Path]::IsPathRooted($entryPath)) {
-            $entryPath = [System.IO.Path]::GetFullPath((Join-Path $managerRoot $entryPath)).TrimEnd('\')
+            $entryPath = [System.IO.Path]::GetFullPath((Join-Path $ManagerRoot $entryPath)).TrimEnd('\')
         }
-        if ($entryPath -ieq ([string]$Config.RepoDir).TrimEnd('\')) {
-            $registryEntry.steamWorkshopId = $RemoteFileId
-            $entryUpdated = $true
+        $publishProperty = $registryEntry.PSObject.Properties['publish']
+        if ($entryPath -ieq ([string]$Config.RepoDir).TrimEnd('\') -and $publishProperty -and $publishProperty.Value -eq $false) {
+            return $true
         }
     }
-    if ($entryUpdated) {
-        [System.IO.File]::WriteAllText($registryPath, ((ConvertTo-Json -InputObject @($registryEntries) -Depth 5) + "`r`n"), (Get-ModUtf8NoBom))
-    }
-    return $entryUpdated
+    return $false
 }
 
 function Find-SteamCmd {
@@ -1021,6 +1016,10 @@ function Invoke-ModPublish {
         [switch]$UpdateDescription
     )
 
+    if (Test-ModRegisteredLocalOnly -Config $Config) {
+        Write-Err 'Config/mods_registry.json of the Modding Manager registers this mod with publish set to false: it is kept local and is not uploaded.'
+        return 1
+    }
     Write-Step 'Preparing the Steam Workshop upload...'
     $metadata = Get-ModMetadata -Path $Config.DescriptorPath
     $remoteFileId = $metadata.RemoteFileId
@@ -1128,9 +1127,6 @@ function Invoke-ModPublish {
             if ($publishedId) {
                 Set-ModDescriptorRemoteFileId -DescriptorPath $Config.DescriptorPath -RemoteFileId $publishedId
                 Write-Ok "New Workshop item $publishedId written to descriptor.mod as remote_file_id"
-                if (-not $Config.PackageName -and (Set-ModRegistryWorkshopId -Config $Config -RemoteFileId $publishedId)) {
-                    Write-Ok 'steamWorkshopId updated in the Modding Manager registry'
-                }
             } else {
                 Write-Warn 'SteamCMD did not write the new item id into the VDF: add remote_file_id to descriptor.mod from the Workshop page.'
             }
