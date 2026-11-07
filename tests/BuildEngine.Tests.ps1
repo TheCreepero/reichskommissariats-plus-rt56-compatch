@@ -638,6 +638,267 @@ Describe 'Packages' -Tag 'Engine' {
     }
 }
 
+Describe 'Bundles' -Tag 'Engine' {
+    BeforeAll {
+        function New-FixtureBundleRepo {
+            $fixtureRoot = New-FixturePackRepo
+            Write-TestFile -Root $fixtureRoot -RelativePath 'packs\all\descriptor.mod' -Text ("version=`"1.0`"`r`nname=`"Fixture Bundle`"`r`nsupported_version=`"1.19.*`"`r`n")
+            [System.IO.File]::WriteAllBytes((Join-Path $fixtureRoot 'packs\all\thumbnail.png'), [byte[]](137, 80, 78, 71))
+            Write-TestFile -Root $fixtureRoot -RelativePath 'packs\all\WORKSHOP_DESCRIPTION_GUIDELINES.md' -Text "# all`r`n`r`n``````bbcode`r`n[h1]all[/h1]`r`n```````r`n"
+            Write-TestFile -Root $fixtureRoot -RelativePath 'tools\HoiModBuild.json' -Text '{ "defaultChangeNote": "Fixture update", "packages": { "alpha": { "root": "packs/alpha", "modFolderName": "fixture_alpha" }, "beta": { "root": "packs/beta", "modFolderName": "fixture_beta", "zipArchiveName": "beta_release.zip" }, "all": { "root": "packs/all", "modFolderName": "fixture_all", "members": ["alpha", "beta"] } } }'
+            return $fixtureRoot
+        }
+
+        function Get-FixtureBundleContentList {
+            param([string[]]$Members = @('alpha', 'beta'))
+
+            $bundleFiles = @('descriptor.mod', 'thumbnail.png')
+            foreach ($memberName in $Members) {
+                $bundleFiles += @("events/${memberName}_events.txt", "localisation/english/${memberName}_l_english.yml")
+            }
+            return @($bundleFiles | Sort-Object)
+        }
+
+        function Get-StagedContentDir {
+            param($PublishOutput)
+
+            $stagedLine = @($PublishOutput | ForEach-Object { "$_" } | Where-Object { $_ -match 'Staged content at:' })[0]
+            $stagedDir = ($stagedLine -replace '^.*Staged content at:\s*', '').Trim()
+            $script:TempRoots.Add((Split-Path -Parent $stagedDir))
+            return $stagedDir
+        }
+    }
+
+    It 'gives a bundle the members it names and one ordered list of content sources, and a plain package one source' {
+        $fixtureRoot = New-FixtureBundleRepo
+        $bundleConfig = Get-ModBuildConfig -RepoDir $fixtureRoot -PackageName 'all'
+        @($bundleConfig.Members) | Should -Be @('alpha', 'beta')
+        $bundleConfig.ContentRoot | Should -Be (Join-Path $bundleConfig.RepoDir 'packs\all')
+        $bundleConfig.DescriptorPath | Should -Be (Join-Path $bundleConfig.RepoDir 'packs\all\descriptor.mod')
+        @($bundleConfig.ContentSources | ForEach-Object { $_.Prefix }) | Should -Be @('packs/all/', 'packs/alpha/', 'packs/beta/')
+        $alphaConfig = Get-ModBuildConfig -RepoDir $fixtureRoot -PackageName 'alpha'
+        @($alphaConfig.Members).Count | Should -Be 0
+        @($alphaConfig.ContentSources).Count | Should -Be 1
+        $alphaConfig.ContentSources[0].Root | Should -Be $alphaConfig.ContentRoot
+    }
+
+    It 'refuses a member that is unknown, the bundle itself, or another bundle' {
+        $fixtureRoot = New-FixtureBundleRepo
+        Write-TestFile -Root $fixtureRoot -RelativePath 'tools\HoiModBuild.json' -Text '{ "packages": { "alpha": { "root": "packs/alpha" }, "all": { "root": "packs/all", "members": ["alpha", "gamma"] } } }'
+        { Get-ModBuildConfig -RepoDir $fixtureRoot -PackageName 'all' } | Should -Throw "*members names 'gamma'*"
+        Write-TestFile -Root $fixtureRoot -RelativePath 'tools\HoiModBuild.json' -Text '{ "packages": { "alpha": { "root": "packs/alpha" }, "all": { "root": "packs/all", "members": ["all"] } } }'
+        { Get-ModBuildConfig -RepoDir $fixtureRoot -PackageName 'all' } | Should -Throw '*cannot be its own member*'
+        Write-TestFile -Root $fixtureRoot -RelativePath 'tools\HoiModBuild.json' -Text '{ "packages": { "alpha": { "root": "packs/alpha" }, "all": { "root": "packs/all", "members": ["alpha"] }, "outer": { "root": "packs/beta", "members": ["all"] } } }'
+        { Get-ModBuildConfig -RepoDir $fixtureRoot -PackageName 'outer' } | Should -Throw "*'all' is a bundle*"
+    }
+
+    It 'lists the bundle among the selected configs and holds the members content beside its own descriptor and thumbnail' {
+        $fixtureRoot = New-FixtureBundleRepo
+        $baseConfig = Get-ModBuildConfig -RepoDir $fixtureRoot
+        @(Get-ModSelectedConfigs -Config $baseConfig | ForEach-Object { $_.PackageName }) | Should -Be @('alpha', 'beta', 'all')
+        $bundleConfig = Get-ModBuildConfig -RepoDir $fixtureRoot -PackageName 'all'
+        @(Get-ModContentFiles -Config $bundleConfig) | Should -Be (Get-FixtureBundleContentList)
+        Invoke-ModValidation -Config $bundleConfig -SkipParser | Should -BeTrue
+    }
+
+    It 'stops when two members hold the same path' {
+        $fixtureRoot = New-FixtureBundleRepo
+        Write-TestFile -Root $fixtureRoot -RelativePath 'packs\beta\events\alpha_events.txt' -Text "add_namespace = alpha`r`n"
+        $bundleConfig = Get-ModBuildConfig -RepoDir $fixtureRoot -PackageName 'all'
+        { Get-ModContentFiles -Config $bundleConfig } | Should -Throw '*events/alpha_events.txt*'
+        Invoke-ModValidation -Config $bundleConfig -SkipParser | Should -BeFalse
+        Invoke-ModBuildAction -Config (Get-ModBuildConfig -RepoDir $fixtureRoot) -Package -NoValidate -Pack 'all' | Select-Object -Last 1 | Should -Be 1
+    }
+
+    It 'checks the encoding of the members files when it validates the bundle' {
+        $fixtureRoot = New-FixtureBundleRepo
+        $config = Get-ModBuildConfig -RepoDir $fixtureRoot
+        Invoke-ModBuildAction -Config $config -ValidateOnly -Pack 'all' | Select-Object -Last 1 | Should -Be 0
+        Write-TestFile -Root $fixtureRoot -RelativePath 'packs\beta\events\beta_events.txt' -Text "add_namespace = beta`r`n" -Bom
+        Invoke-ModBuildAction -Config $config -ValidateOnly -Pack 'all' | Select-Object -Last 1 | Should -Be 1
+    }
+
+    It 'leaves the bundle out of the lifecycle switches unless -Pack names it' {
+        $modDir = New-TestDirectory
+        $fixtureRoot = New-FixtureBundleRepo
+        $config = Get-ModBuildConfig -RepoDir $fixtureRoot -ModDir $modDir
+        Invoke-ModBuildAction -Config $config -Deploy -NoValidate | Select-Object -Last 1 | Should -Be 0
+        Test-Path -LiteralPath (Join-Path $modDir 'fixture_alpha') | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path $modDir 'fixture_beta') | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path $modDir 'fixture_all') | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $modDir 'fixture_all.mod') | Should -BeFalse
+        Invoke-ModBuildAction -Config $config -Package -NoValidate | Select-Object -Last 1 | Should -Be 0
+        Test-Path -LiteralPath (Join-Path $fixtureRoot 'artifacts\fixture_alpha.zip') | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path $fixtureRoot 'artifacts\fixture_all.zip') | Should -BeFalse
+        Invoke-ModBuildAction -Config $config -DevLink -NoValidate | Select-Object -Last 1 | Should -Be 0
+        Test-Path -LiteralPath (Join-Path $fixtureRoot '.devlink') | Should -BeFalse
+        Invoke-ModBuildAction -Config $config -Deploy -NoValidate -Pack 'all' | Select-Object -Last 1 | Should -Be 0
+        Invoke-ModBuildAction -Config $config -Clean | Select-Object -Last 1 | Should -Be 0
+        Test-Path -LiteralPath (Join-Path $modDir 'fixture_alpha') | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $modDir 'fixture_all') | Should -BeTrue
+    }
+
+    It 'still refuses an upload without a package when a bundle is among them' {
+        $config = Get-ModBuildConfig -RepoDir (New-FixtureBundleRepo)
+        Invoke-ModBuildAction -Config $config -PublishSteam -DryRun -NoValidate -SteamUser 'tester' | Select-Object -Last 1 | Should -Be 1
+    }
+
+    It 'packages the bundle as every member plus its own descriptor and thumbnail, or only the members it is told to include' {
+        $fixtureRoot = New-FixtureBundleRepo
+        $config = Get-ModBuildConfig -RepoDir $fixtureRoot
+        Invoke-ModBuildAction -Config $config -Package -NoValidate -Pack 'all' | Select-Object -Last 1 | Should -Be 0
+        Get-ZipEntryList -ZipPath (Join-Path $fixtureRoot 'artifacts\fixture_all.zip') | Should -Be (Get-FixtureBundleContentList)
+        Invoke-ModBuildAction -Config $config -Package -NoValidate -Pack 'all' -IncludeMembers 'beta' | Select-Object -Last 1 | Should -Be 0
+        Get-ZipEntryList -ZipPath (Join-Path $fixtureRoot 'artifacts\fixture_all.zip') | Should -Be (Get-FixtureBundleContentList -Members @('beta'))
+    }
+
+    It 'refuses to include a member the bundle does not have' {
+        $config = Get-ModBuildConfig -RepoDir (New-FixtureBundleRepo)
+        Invoke-ModBuildAction -Config $config -Package -NoValidate -Pack 'all' -IncludeMembers 'gamma' | Select-Object -Last 1 | Should -Be 1
+    }
+
+    It 'deploys the bundle as one folder and drops what no member holds any more' {
+        $modDir = New-TestDirectory
+        $fixtureRoot = New-FixtureBundleRepo
+        $config = Get-ModBuildConfig -RepoDir $fixtureRoot -ModDir $modDir
+        Invoke-ModBuildAction -Config $config -Deploy -NoValidate -Pack 'all' | Select-Object -Last 1 | Should -Be 0
+        Get-RelativeFileList -Root (Join-Path $modDir 'fixture_all') | Should -Be (Get-FixtureBundleContentList)
+        Write-TestFile -Root $modDir -RelativePath 'fixture_all\events\stale_events.txt' -Text 'stale'
+        Remove-Item -LiteralPath (Join-Path $fixtureRoot 'packs\beta\events\beta_events.txt')
+        Invoke-ModBuildAction -Config $config -Deploy -NoValidate -Pack 'all' | Select-Object -Last 1 | Should -Be 0
+        Get-RelativeFileList -Root (Join-Path $modDir 'fixture_all') | Should -Be (@(Get-FixtureBundleContentList | Where-Object { $_ -ne 'events/beta_events.txt' }))
+    }
+
+    It 'stages a dry-run upload of the bundle with its own title and the included members only' {
+        $config = Get-ModBuildConfig -RepoDir (New-FixtureBundleRepo)
+        $publishOutput = @(Invoke-ModBuildAction -Config $config -PublishSteam -DryRun -NoValidate -SteamUser 'tester' -Pack 'all' -IncludeMembers 'alpha' 6>&1)
+        [int]$publishOutput[-1] | Should -Be 0
+        $contentDir = Get-StagedContentDir -PublishOutput $publishOutput
+        Get-RelativeFileList -Root $contentDir | Should -Be (Get-FixtureBundleContentList -Members @('alpha'))
+        $vdfText = [System.IO.File]::ReadAllText((Join-Path (Split-Path -Parent $contentDir) 'workshop_build.vdf'))
+        $vdfText | Should -Match ([regex]::Escape('"title" "Fixture Bundle"'))
+    }
+
+    It 'stages every member when no member list is given' {
+        $config = Get-ModBuildConfig -RepoDir (New-FixtureBundleRepo)
+        $publishOutput = @(Invoke-ModBuildAction -Config $config -PublishSteam -DryRun -NoValidate -SteamUser 'tester' -Pack 'all' 6>&1)
+        [int]$publishOutput[-1] | Should -Be 0
+        Get-RelativeFileList -Root (Get-StagedContentDir -PublishOutput $publishOutput) | Should -Be (Get-FixtureBundleContentList)
+    }
+
+    It 'builds a DevLink folder of hard links that follow an edit in place, and points the launcher at it' {
+        $modDir = New-TestDirectory
+        $fixtureRoot = New-FixtureBundleRepo
+        $config = Get-ModBuildConfig -RepoDir $fixtureRoot -ModDir $modDir
+        $linkOutput = @(Invoke-ModBuildAction -Config $config -DevLink -NoValidate -Pack 'all' 6>&1)
+        [int]$linkOutput[-1] | Should -Be 0
+        $linkFolder = Join-Path $config.RepoDir '.devlink\fixture_all'
+        Get-RelativeFileList -Root $linkFolder | Should -Be (Get-FixtureBundleContentList)
+        Get-ModLauncherTarget -LauncherFilePath (Join-Path $modDir 'fixture_all.mod') | Should -Be $linkFolder
+        @($linkOutput | ForEach-Object { "$_" } | Where-Object { $_ -match 'Linked 6 file\(s\).*copied 0' }).Count | Should -Be 1
+        [System.IO.File]::WriteAllText((Join-Path $fixtureRoot 'packs\beta\events\beta_events.txt'), 'add_namespace = edited')
+        [System.IO.File]::ReadAllText((Join-Path $linkFolder 'events\beta_events.txt')) | Should -Be 'add_namespace = edited'
+    }
+
+    It 'copies the files that cannot be linked and says how many' {
+        Mock New-ModHardLink { throw 'no hard links here' }
+        $modDir = New-TestDirectory
+        $config = Get-ModBuildConfig -RepoDir (New-FixtureBundleRepo) -ModDir $modDir
+        $linkOutput = @(Invoke-ModBuildAction -Config $config -DevLink -NoValidate -Pack 'all' 6>&1)
+        [int]$linkOutput[-1] | Should -Be 0
+        Get-RelativeFileList -Root (Join-Path $config.RepoDir '.devlink\fixture_all') | Should -Be (Get-FixtureBundleContentList)
+        @($linkOutput | ForEach-Object { "$_" } | Where-Object { $_ -match 'Linked 0 file\(s\).*copied 6' }).Count | Should -Be 1
+    }
+
+    It 'reports a link that a rewrite broke, a missing file and an extra file, and changes nothing' {
+        $modDir = New-TestDirectory
+        $fixtureRoot = New-FixtureBundleRepo
+        $config = Get-ModBuildConfig -RepoDir $fixtureRoot -ModDir $modDir
+        Invoke-ModBuildAction -Config $config -DevLink -NoValidate -Pack 'all' | Select-Object -Last 1 | Should -Be 0
+        Invoke-ModBuildAction -Config $config -DevLink -CheckLinks -Pack 'all' | Select-Object -Last 1 | Should -Be 0
+
+        $memberFile = Join-Path $fixtureRoot 'packs\beta\events\beta_events.txt'
+        Remove-Item -LiteralPath $memberFile
+        [System.IO.File]::WriteAllText($memberFile, 'add_namespace = rewritten')
+        Write-TestFile -Root $fixtureRoot -RelativePath 'packs\alpha\events\new_events.txt' -Text 'add_namespace = new'
+        Write-TestFile -Root $fixtureRoot -RelativePath '.devlink\fixture_all\events\extra_events.txt' -Text 'extra'
+        $linkFolder = Join-Path $fixtureRoot '.devlink\fixture_all'
+        $listBefore = Get-RelativeFileList -Root $linkFolder
+
+        $checkOutput = @(Invoke-ModBuildAction -Config $config -DevLink -CheckLinks -Pack 'all' 6>&1)
+        [int]$checkOutput[-1] | Should -Be 1
+        $checkText = @($checkOutput | ForEach-Object { "$_" }) -join "`n"
+        $checkText | Should -Match 'events/beta_events.txt'
+        $checkText | Should -Match 'events/new_events.txt'
+        $checkText | Should -Match 'events/extra_events.txt'
+        Get-RelativeFileList -Root $linkFolder | Should -Be $listBefore
+
+        Invoke-ModBuildAction -Config $config -DevLink -NoValidate -Pack 'all' | Select-Object -Last 1 | Should -Be 0
+        Invoke-ModBuildAction -Config $config -DevLink -CheckLinks -Pack 'all' | Select-Object -Last 1 | Should -Be 0
+    }
+
+    It 'checks the links of the bundle without validating it first' {
+        $modDir = New-TestDirectory
+        $fixtureRoot = New-FixtureBundleRepo
+        $config = Get-ModBuildConfig -RepoDir $fixtureRoot -ModDir $modDir
+        Invoke-ModBuildAction -Config $config -DevLink -NoValidate -Pack 'all' | Select-Object -Last 1 | Should -Be 0
+        [System.IO.File]::WriteAllText((Join-Path $fixtureRoot 'packs\all\descriptor.mod'), "version=`"1.0`"`r`n")
+        Invoke-ModBuildAction -Config $config -ValidateOnly -Pack 'all' | Select-Object -Last 1 | Should -Be 1
+        Invoke-ModBuildAction -Config $config -DevLink -CheckLinks -Pack 'all' | Select-Object -Last 1 | Should -Be 0
+    }
+
+    It 'refuses -CheckLinks without -DevLink and for a package without members' {
+        $config = Get-ModBuildConfig -RepoDir (New-FixtureBundleRepo)
+        Invoke-ModBuildAction -Config $config -Deploy -CheckLinks -Pack 'all' | Select-Object -Last 1 | Should -Be 1
+        Invoke-ModBuildAction -Config $config -DevLink -CheckLinks -Pack 'alpha' | Select-Object -Last 1 | Should -Be 1
+    }
+
+    It 'notes, without a warning, when a member and the bundle are both linked to this repository' {
+        $modDir = New-TestDirectory
+        $config = Get-ModBuildConfig -RepoDir (New-FixtureBundleRepo) -ModDir $modDir
+        Invoke-ModBuildAction -Config $config -DevLink -NoValidate -Pack 'alpha' | Select-Object -Last 1 | Should -Be 0
+        $bundleOutput = @(Invoke-ModBuildAction -Config $config -DevLink -NoValidate -Pack 'all' 6>&1)
+        @($bundleOutput | ForEach-Object { "$_" } | Where-Object { $_ -match '\[INFO\].*fixture_alpha.*LOAD-022' }).Count | Should -Be 1
+        @($bundleOutput | ForEach-Object { "$_" } | Where-Object { $_ -match '\[WARN\].*(twice|LOAD-022)' }).Count | Should -Be 0
+        $memberOutput = @(Invoke-ModBuildAction -Config $config -DevLink -NoValidate -Pack 'beta' 6>&1)
+        @($memberOutput | ForEach-Object { "$_" } | Where-Object { $_ -match '\[INFO\].*fixture_all.*LOAD-022' }).Count | Should -Be 1
+        @($memberOutput | ForEach-Object { "$_" } | Where-Object { $_ -match '\[WARN\].*(twice|LOAD-022)' }).Count | Should -Be 0
+    }
+
+    It 'says nothing about the bundle when only a member is linked' {
+        $modDir = New-TestDirectory
+        $config = Get-ModBuildConfig -RepoDir (New-FixtureBundleRepo) -ModDir $modDir
+        $memberOutput = @(Invoke-ModBuildAction -Config $config -DevLink -NoValidate -Pack 'alpha' 6>&1)
+        @($memberOutput | ForEach-Object { "$_" } | Where-Object { $_ -match 'LOAD-022|is linked to this repository and holds' }).Count | Should -Be 0
+    }
+
+    It 'says nothing about a double load when only the bundle is linked' {
+        $modDir = New-TestDirectory
+        $config = Get-ModBuildConfig -RepoDir (New-FixtureBundleRepo) -ModDir $modDir
+        $bundleOutput = @(Invoke-ModBuildAction -Config $config -DevLink -NoValidate -Pack 'all' 6>&1)
+        @($bundleOutput | ForEach-Object { "$_" } | Where-Object { $_ -match 'LOAD-022' }).Count | Should -Be 0
+    }
+
+    It 'cleans the DevLink folder and the launcher of the bundle' {
+        $modDir = New-TestDirectory
+        $fixtureRoot = New-FixtureBundleRepo
+        $config = Get-ModBuildConfig -RepoDir $fixtureRoot -ModDir $modDir
+        Invoke-ModBuildAction -Config $config -DevLink -NoValidate -Pack 'all' | Select-Object -Last 1 | Should -Be 0
+        Invoke-ModBuildAction -Config $config -Clean -Pack 'all' | Select-Object -Last 1 | Should -Be 0
+        Test-Path -LiteralPath (Join-Path $fixtureRoot '.devlink\fixture_all') | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $modDir 'fixture_all.mod') | Should -BeFalse
+    }
+
+    It 'passes -IncludeMembers and -CheckLinks on to the engine' {
+        function Invoke-BundleProbe {
+            param([switch]$DevLink, [switch]$CheckLinks, [string]$IncludeMembers, [string]$Generate)
+            Select-ModBuildParameters -BoundParameters $PSBoundParameters
+        }
+        $selectedParameters = Invoke-BundleProbe -DevLink -CheckLinks -IncludeMembers 'alpha,beta' -Generate 'x'
+        @($selectedParameters.Keys | Sort-Object) | Should -Be @('CheckLinks', 'DevLink', 'IncludeMembers')
+    }
+}
+
 Describe 'Workshop VDF' -Tag 'Engine' {
     It 'escapes quotes and backslashes and keeps the visibility of an existing item' {
         $vdfText = New-ModWorkshopVdf -ContentDir 'C:\stage\content' -PreviewPath 'C:\stage\content\thumbnail.png' -Title 'My "Mod"' -PublishedFileId '123' -ChangeNote 'Fix C:\path and "quotes"'
@@ -927,5 +1188,22 @@ Describe 'This repository' {
             Get-NestedFolderList -Root $contentDir | Should -BeNullOrEmpty
             Get-RelativeFileList -Root $contentDir | Should -Be @(Get-ModContentFiles -Config $repoConfig)
         }
+    }
+
+    It 'ignores the DevLink folder when a package has members' {
+        if (-not $script:IsModRepo) {
+            Set-ItResult -Skipped -Because 'this file runs from the Modding Manager, not from a mod repository'
+            return
+        }
+        if (@($script:RepoConfigs | Where-Object { @($_.Members).Count -gt 0 }).Count -eq 0) {
+            Set-ItResult -Skipped -Because 'no package of this repository has members'
+            return
+        }
+        if (-not (Get-Command -Name 'git' -ErrorAction SilentlyContinue)) {
+            Set-ItResult -Skipped -Because 'git is not installed'
+            return
+        }
+        $ignoredPaths = @(Invoke-ModGit -RepoDir $script:RepoRoot -Arguments @('check-ignore', '--', '.devlink/example_mod/events/example.txt'))
+        $ignoredPaths | Should -Not -BeNullOrEmpty -Because 'a DevLink folder of hard links is never committed: add .devlink/ to .gitignore'
     }
 }

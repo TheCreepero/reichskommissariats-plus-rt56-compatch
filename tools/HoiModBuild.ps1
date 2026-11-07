@@ -41,6 +41,56 @@ function Get-ModPackageSettings {
     return $packageSettings
 }
 
+function Get-ModPackageMemberNames {
+    param(
+        [Parameter(Mandatory = $true)]$PackageSettings,
+        [string]$PackageName
+    )
+
+    if (-not $PackageName) {
+        return @()
+    }
+    $packageSetting = $PackageSettings[$PackageName]
+    if ($null -eq $packageSetting -or -not $packageSetting.PSObject.Properties['members'] -or $null -eq $packageSetting.members) {
+        return @()
+    }
+    $memberNames = @($packageSetting.members | ForEach-Object { [string]$_ })
+    foreach ($memberName in $memberNames) {
+        if ($memberName -eq $PackageName) {
+            throw "tools\HoiModBuild.json: package '$PackageName' cannot be its own member"
+        }
+        if (-not $PackageSettings.Contains($memberName)) {
+            throw "tools\HoiModBuild.json: package '$PackageName' members names '$memberName', which is not a package; its packages are: $(@($PackageSettings.Keys) -join ', ')"
+        }
+        $memberSetting = $PackageSettings[$memberName]
+        if ($memberSetting.PSObject.Properties['members'] -and $null -ne $memberSetting.members) {
+            throw "tools\HoiModBuild.json: package '$PackageName' members names '$memberName', but '$memberName' is a bundle; a bundle holds country packages, not other bundles"
+        }
+    }
+    return $memberNames
+}
+
+function Select-ModBundleMembers {
+    param(
+        [Parameter(Mandatory = $true)]$Config,
+        [string[]]$MemberNames
+    )
+
+    $requestedNames = @($MemberNames | ForEach-Object { "$_" -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    if ($requestedNames.Count -eq 0) {
+        return $Config
+    }
+    foreach ($requestedName in $requestedNames) {
+        if (@($Config.Members) -notcontains $requestedName) {
+            throw "Package '$($Config.PackageName)' has no member '$requestedName'; its members are: $(@($Config.Members) -join ', ')"
+        }
+    }
+    $selectedConfig = $Config.PSObject.Copy()
+    $selectedConfig.Members = @($Config.Members | Where-Object { $requestedNames -contains $_ })
+    $selectedConfig.ContentSources = @($Config.ContentSources | Where-Object { $_.Name -eq $Config.PackageName -or $requestedNames -contains $_.Name })
+    return $selectedConfig
+}
+
 function Get-ModBuildConfig {
     param(
         [Parameter(Mandatory = $true)][string]$RepoDir,
@@ -92,10 +142,23 @@ function Get-ModBuildConfig {
         $ModDir = Get-ModDefaultModDir
     }
 
+    $contentSources = [System.Collections.Generic.List[PSObject]]::new()
+    $contentSources.Add([PSCustomObject]@{ Name = [string]$PackageName; Root = $contentRoot; Prefix = $contentPrefix })
+    $memberNames = @(Get-ModPackageMemberNames -PackageSettings $packageSettings -PackageName $PackageName)
+    foreach ($memberName in $memberNames) {
+        $memberRoot = [System.IO.Path]::GetFullPath((Join-Path $repoPath ([string](Get-ModSettingValue -Settings $packageSettings[$memberName] -Name 'root' -DefaultValue '')))).TrimEnd('\')
+        if (-not $memberRoot.StartsWith($repoPath + '\', [System.StringComparison]::OrdinalIgnoreCase)) {
+            throw "tools\HoiModBuild.json: the root of member '$memberName' of package '$PackageName' lies outside the repository"
+        }
+        $contentSources.Add([PSCustomObject]@{ Name = $memberName; Root = $memberRoot; Prefix = ($memberRoot.Substring($repoPath.Length + 1).Replace('\', '/') + '/') })
+    }
+
     return [PSCustomObject]@{
         RepoDir           = $repoPath
         ContentRoot       = $contentRoot
         ContentPrefix     = $contentPrefix
+        ContentSources    = $contentSources.ToArray()
+        Members           = $memberNames
         PackageName       = [string]$PackageName
         PackageNames      = $packageNames
         DescriptorPath    = Join-Path $contentRoot 'descriptor.mod'
@@ -136,7 +199,7 @@ function Get-ModSelectedConfigs {
 function Select-ModBuildParameters {
     param([Parameter(Mandatory = $true)]$BoundParameters)
 
-    $lifecycleParameterNames = @('Deploy', 'DevLink', 'Package', 'PublishSteam', 'InstallSteamCmd', 'ValidateOnly', 'Test', 'Validate', 'NoValidate', 'Clean', 'ZipOutput', 'SteamUser', 'ChangeNote', 'SteamCmdPath', 'DryRun', 'UpdateDescription', 'Pack')
+    $lifecycleParameterNames = @('Deploy', 'DevLink', 'Package', 'PublishSteam', 'InstallSteamCmd', 'ValidateOnly', 'Test', 'Validate', 'NoValidate', 'Clean', 'ZipOutput', 'SteamUser', 'ChangeNote', 'SteamCmdPath', 'DryRun', 'UpdateDescription', 'Pack', 'IncludeMembers', 'CheckLinks')
     $selectedParameters = @{}
     foreach ($parameterName in $lifecycleParameterNames) {
         if ($BoundParameters.ContainsKey($parameterName)) {
@@ -307,29 +370,59 @@ function Test-ModFileHasBom {
     }
 }
 
+function Get-ModContentSources {
+    param([Parameter(Mandatory = $true)]$Config)
+
+    if ($Config.PSObject.Properties['ContentSources'] -and $Config.ContentSources) {
+        return @($Config.ContentSources)
+    }
+    return @([PSCustomObject]@{ Name = ''; Root = $Config.ContentRoot; Prefix = '' })
+}
+
+function Get-ModContentSourceMap {
+    param([Parameter(Mandatory = $true)]$Config)
+
+    $sourceMap = [System.Collections.Generic.Dictionary[string, string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    $sourceOwners = [System.Collections.Generic.Dictionary[string, string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    $collisions = [System.Collections.Generic.List[string]]::new()
+    foreach ($contentSource in @(Get-ModContentSources -Config $Config)) {
+        foreach ($contentDir in $Config.ContentDirs) {
+            $sourceDir = Join-Path $contentSource.Root $contentDir
+            if (-not (Test-Path -LiteralPath $sourceDir -PathType Container)) {
+                continue
+            }
+            $sourceRoot = (Get-Item -LiteralPath $sourceDir).FullName.TrimEnd('\')
+            foreach ($contentFile in @(Get-ChildItem -LiteralPath $sourceRoot -Recurse -File -Force)) {
+                if ($contentFile.Name -eq '.gitkeep') {
+                    continue
+                }
+                $relativePath = $contentDir + '/' + $contentFile.FullName.Substring($sourceRoot.Length + 1).Replace('\', '/')
+                if ($sourceMap.ContainsKey($relativePath)) {
+                    $collisions.Add("$relativePath (held by '$($sourceOwners[$relativePath])' and '$($contentSource.Name)')")
+                    continue
+                }
+                $sourceMap[$relativePath] = $contentFile.FullName
+                $sourceOwners[$relativePath] = $contentSource.Name
+            }
+        }
+    }
+    if ($collisions.Count -gt 0) {
+        throw "Package '$($Config.PackageName)' has files that two members both hold, so one would replace the other: $($collisions -join '; ')"
+    }
+    foreach ($contentFileName in $Config.ContentFiles) {
+        $ownFile = Join-Path $Config.ContentRoot $contentFileName
+        if (Test-Path -LiteralPath $ownFile -PathType Leaf) {
+            $sourceMap[$contentFileName] = $ownFile
+        }
+    }
+    return $sourceMap
+}
+
 function Get-ModContentFiles {
     param([Parameter(Mandatory = $true)]$Config)
 
-    $relativePaths = [System.Collections.Generic.List[string]]::new()
-    foreach ($contentDir in $Config.ContentDirs) {
-        $sourceDir = Join-Path $Config.ContentRoot $contentDir
-        if (-not (Test-Path -LiteralPath $sourceDir -PathType Container)) {
-            continue
-        }
-        $sourceRoot = (Get-Item -LiteralPath $sourceDir).FullName.TrimEnd('\')
-        foreach ($contentFile in @(Get-ChildItem -LiteralPath $sourceRoot -Recurse -File -Force)) {
-            if ($contentFile.Name -eq '.gitkeep') {
-                continue
-            }
-            $relativePaths.Add($contentDir + '/' + $contentFile.FullName.Substring($sourceRoot.Length + 1).Replace('\', '/'))
-        }
-    }
-    foreach ($contentFileName in $Config.ContentFiles) {
-        if (Test-Path -LiteralPath (Join-Path $Config.ContentRoot $contentFileName) -PathType Leaf) {
-            $relativePaths.Add($contentFileName)
-        }
-    }
-    return @($relativePaths | Sort-Object)
+    $sourceMap = Get-ModContentSourceMap -Config $Config
+    return @($sourceMap.Keys | Sort-Object)
 }
 
 function Get-ClausewitzLineNumber {
@@ -410,11 +503,19 @@ function Get-ModUncommittedContentFiles {
     if (-not (Test-ModGitRepository -Config $Config)) {
         return @()
     }
-    $contentPaths = @(@($Config.ContentDirs) + @($Config.ContentFiles) | Where-Object { Test-Path -LiteralPath (Join-Path $Config.ContentRoot $_) } | ForEach-Object { $Config.ContentPrefix + $_ })
+    $contentPaths = [System.Collections.Generic.List[string]]::new()
+    foreach ($contentSource in @(Get-ModContentSources -Config $Config)) {
+        $candidateNames = if ($contentSource.Root -eq $Config.ContentRoot) { @($Config.ContentDirs) + @($Config.ContentFiles) } else { @($Config.ContentDirs) }
+        foreach ($candidateName in $candidateNames) {
+            if (Test-Path -LiteralPath (Join-Path $contentSource.Root $candidateName)) {
+                $contentPaths.Add($contentSource.Prefix + $candidateName)
+            }
+        }
+    }
     if ($contentPaths.Count -eq 0) {
         return @()
     }
-    $statusLines = @(Invoke-ModGit -RepoDir $Config.RepoDir -Arguments (@('status', '--porcelain', '--untracked-files=all', '--') + $contentPaths))
+    $statusLines = @(Invoke-ModGit -RepoDir $Config.RepoDir -Arguments (@('status', '--porcelain', '--untracked-files=all', '--') + $contentPaths.ToArray()))
     return @($statusLines | Where-Object { $_ -and $_.Length -gt 3 } | ForEach-Object { $_.Substring(3).Trim('"') })
 }
 
@@ -459,12 +560,18 @@ function Invoke-ModValidation {
         $problemCount++
     }
 
-    $contentFiles = @(Get-ModContentFiles -Config $Config)
+    try {
+        $sourceMap = Get-ModContentSourceMap -Config $Config
+    } catch {
+        Write-Err $_.Exception.Message
+        return $false
+    }
+    $contentFiles = @($sourceMap.Keys | Sort-Object)
     $scriptFiles = @($contentFiles | Where-Object { $_ -match '\.(txt|gui|gfx)$' })
     $localisationFiles = @($contentFiles | Where-Object { $_ -match '\.yml$' })
 
     foreach ($relativePath in $scriptFiles) {
-        $fullPath = Join-Path $Config.ContentRoot $relativePath
+        $fullPath = $sourceMap[$relativePath]
         if (Test-ModFileHasBom -Path $fullPath) {
             Write-Err "${relativePath}: starts with a UTF-8 BOM; script, .gui and .gfx files are written without one"
             $problemCount++
@@ -477,7 +584,7 @@ function Invoke-ModValidation {
     }
 
     foreach ($relativePath in $localisationFiles) {
-        if (-not (Test-ModFileHasBom -Path (Join-Path $Config.ContentRoot $relativePath))) {
+        if (-not (Test-ModFileHasBom -Path $sourceMap[$relativePath])) {
             Write-Err "${relativePath}: localisation files need a UTF-8 BOM"
             $problemCount++
         }
@@ -487,7 +594,7 @@ function Invoke-ModValidation {
         $managerRoot = Get-ModManagerRoot
         $parserScript = if ($managerRoot) { Join-Path $managerRoot 'Scripts\Vanilla\Test-HoiParser.ps1' } else { $null }
         if ($parserScript -and (Test-Path -LiteralPath $parserScript)) {
-            $parserPaths = @($scriptFiles | ForEach-Object { Join-Path $Config.ContentRoot $_ })
+            $parserPaths = @($scriptFiles | ForEach-Object { $sourceMap[$_] })
             $parseResult = & $parserScript -Path $parserPaths -PassThru
             foreach ($diagnostic in @($parseResult.Diagnostics)) {
                 $displayPath = ([string]$diagnostic.File).Replace($Config.RepoDir + '\', '').Replace('\', '/')
@@ -514,16 +621,30 @@ function Copy-ModContent {
     }
     $destinationRoot = (Get-Item -LiteralPath $Destination).FullName.TrimEnd('\')
 
+    $contentSources = @(Get-ModContentSources -Config $Config)
+    if ($contentSources.Count -gt 1) {
+        Get-ModContentSourceMap -Config $Config | Out-Null
+    }
     $keptNames = [System.Collections.Generic.List[string]]::new()
     foreach ($contentDir in $Config.ContentDirs) {
-        $sourceDir = Join-Path $Config.ContentRoot $contentDir
-        if (-not (Test-Path -LiteralPath $sourceDir -PathType Container)) {
+        $sourceDirs = @($contentSources | ForEach-Object { Join-Path $_.Root $contentDir } | Where-Object { Test-Path -LiteralPath $_ -PathType Container })
+        if ($sourceDirs.Count -eq 0) {
             continue
         }
         $keptNames.Add($contentDir)
-        & robocopy.exe $sourceDir (Join-Path $destinationRoot $contentDir) /MIR /MT:8 /XF .gitkeep /R:1 /W:1 /NDL /NP /NFL /NJH /NJS | Out-Null
-        if ($LASTEXITCODE -ge 8) {
-            throw "robocopy failed for '$contentDir' with exit code $LASTEXITCODE"
+        $destinationDir = Join-Path $destinationRoot $contentDir
+        $copyMode = '/MIR'
+        if ($contentSources.Count -gt 1) {
+            if (Test-Path -LiteralPath $destinationDir) {
+                Remove-Item -LiteralPath $destinationDir -Recurse -Force
+            }
+            $copyMode = '/E'
+        }
+        foreach ($sourceDir in $sourceDirs) {
+            & robocopy.exe $sourceDir $destinationDir $copyMode /MT:8 /XF .gitkeep /R:1 /W:1 /NDL /NP /NFL /NJH /NJS | Out-Null
+            if ($LASTEXITCODE -ge 8) {
+                throw "robocopy failed for '$contentDir' with exit code $LASTEXITCODE"
+            }
         }
     }
     foreach ($contentFileName in $Config.ContentFiles) {
@@ -626,13 +747,14 @@ function New-ModZipArchive {
         [Parameter(Mandatory = $true)][string]$SourceDir,
         [Parameter(Mandatory = $true)][string]$ZipPath,
         [string]$StagedContentDir,
-        [string]$ContentRoot
+        [string]$ContentRoot,
+        $SourceMap
     )
 
     Add-Type -AssemblyName System.IO.Compression
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $sourceRoot = (Get-Item -LiteralPath $SourceDir).FullName.TrimEnd('\')
-    $stagedContentPrefix = if ($StagedContentDir -and $ContentRoot) { (Get-Item -LiteralPath $StagedContentDir).FullName.TrimEnd('\') + '\' } else { $null }
+    $stagedContentPrefix = if ($StagedContentDir -and ($ContentRoot -or $SourceMap)) { (Get-Item -LiteralPath $StagedContentDir).FullName.TrimEnd('\') + '\' } else { $null }
     if (Test-Path -LiteralPath $ZipPath) {
         Remove-Item -LiteralPath $ZipPath -Force
     }
@@ -642,7 +764,13 @@ function New-ModZipArchive {
             $entryName = $sourceFile.FullName.Substring($sourceRoot.Length + 1).Replace('\', '/')
             $readPath = $sourceFile.FullName
             if ($stagedContentPrefix -and $readPath.StartsWith($stagedContentPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
-                $readPath = Join-Path $ContentRoot $readPath.Substring($stagedContentPrefix.Length)
+                $stagedRelativePath = $readPath.Substring($stagedContentPrefix.Length)
+                $mappedKey = $stagedRelativePath.Replace('\', '/')
+                if ($SourceMap -and $SourceMap.ContainsKey($mappedKey)) {
+                    $readPath = $SourceMap[$mappedKey]
+                } elseif ($ContentRoot) {
+                    $readPath = Join-Path $ContentRoot $stagedRelativePath
+                }
             }
             [void][System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, $readPath, $entryName, [System.IO.Compression.CompressionLevel]::Optimal)
         }
@@ -879,8 +1007,9 @@ function Resolve-ModChangeNote {
     }
     if (Test-ModGitRepository -Config $Config) {
         $logArguments = @('log', '-1', '--pretty=%s')
-        if ($Config.ContentPrefix) {
-            $logArguments += @('--', $Config.ContentPrefix)
+        $sourcePrefixes = @(Get-ModContentSources -Config $Config | ForEach-Object { $_.Prefix } | Where-Object { $_ })
+        if ($sourcePrefixes.Count -gt 0) {
+            $logArguments += @('--') + $sourcePrefixes
         }
         $lastSubject = @(Invoke-ModGit -RepoDir $Config.RepoDir -Arguments $logArguments)
         if ($lastSubject.Count -gt 0 -and $lastSubject[0]) {
@@ -903,7 +1032,8 @@ function Invoke-ModClean {
         (Join-Path $Config.ModDir ($Config.ModFolderName + '.mod')),
         (Join-Path $Config.ArtifactsDir $Config.ZipArchiveName),
         (Join-Path $Config.RepoDir $Config.ZipArchiveName),
-        (Join-Path $Config.RepoDir ($Config.ModFolderName + '.mod'))
+        (Join-Path $Config.RepoDir ($Config.ModFolderName + '.mod')),
+        (Get-ModDevLinkFolder -Config $Config)
     )
     if ($ZipOutput) {
         $removablePaths += $ZipOutput
@@ -917,9 +1047,205 @@ function Invoke-ModClean {
     return 0
 }
 
-function Invoke-ModDevLink {
+function Get-ModDevLinkFolder {
     param([Parameter(Mandatory = $true)]$Config)
 
+    return (Join-Path $Config.RepoDir ('.devlink\' + $Config.ModFolderName))
+}
+
+function Get-ModBundleConfigs {
+    param([Parameter(Mandatory = $true)]$Config)
+
+    $bundleConfigs = [System.Collections.Generic.List[PSObject]]::new()
+    foreach ($packageName in @($Config.PackageNames)) {
+        $packageConfig = Get-ModBuildConfig -RepoDir $Config.RepoDir -ModDir $Config.ModDir -PackageName $packageName
+        if (@($packageConfig.Members).Count -gt 0) {
+            $bundleConfigs.Add($packageConfig)
+        }
+    }
+    return $bundleConfigs.ToArray()
+}
+
+function New-ModHardLink {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$Target
+    )
+
+    New-Item -ItemType HardLink -Path $Path -Value $Target -ErrorAction Stop | Out-Null
+}
+
+function Get-ModFileIdentity {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    if (-not ('HoiModBuild.FileIdentity' -as [type])) {
+        Add-Type -TypeDefinition @'
+using System.IO;
+using System.Runtime.InteropServices;
+using Microsoft.Win32.SafeHandles;
+
+namespace HoiModBuild
+{
+    public static class FileIdentity
+    {
+        [StructLayout(LayoutKind.Sequential)]
+        private struct FileTimeValue
+        {
+            public uint Low;
+            public uint High;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct ByHandleFileInformation
+        {
+            public uint FileAttributes;
+            public FileTimeValue CreationTime;
+            public FileTimeValue LastAccessTime;
+            public FileTimeValue LastWriteTime;
+            public uint VolumeSerialNumber;
+            public uint FileSizeHigh;
+            public uint FileSizeLow;
+            public uint NumberOfLinks;
+            public uint FileIndexHigh;
+            public uint FileIndexLow;
+        }
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool GetFileInformationByHandle(SafeFileHandle handle, out ByHandleFileInformation information);
+
+        public static string Get(string path)
+        {
+            using (FileStream stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+            {
+                ByHandleFileInformation information;
+                if (!GetFileInformationByHandle(stream.SafeFileHandle, out information))
+                {
+                    throw new IOException("GetFileInformationByHandle failed for " + path);
+                }
+                return information.VolumeSerialNumber + ":" + information.FileIndexHigh + ":" + information.FileIndexLow;
+            }
+        }
+    }
+}
+'@
+    }
+    return [HoiModBuild.FileIdentity]::Get($Path)
+}
+
+function Get-ModDevLinkProblems {
+    param([Parameter(Mandatory = $true)]$Config)
+
+    $linkFolder = Get-ModDevLinkFolder -Config $Config
+    $problems = [System.Collections.Generic.List[PSObject]]::new()
+    if (-not (Test-Path -LiteralPath $linkFolder -PathType Container)) {
+        $problems.Add([PSCustomObject]@{ Kind = 'no folder'; Path = $linkFolder })
+        return $problems.ToArray()
+    }
+    $sourceMap = Get-ModContentSourceMap -Config $Config
+    $linkRoot = (Get-Item -LiteralPath $linkFolder).FullName.TrimEnd('\')
+    foreach ($relativePath in @($sourceMap.Keys | Sort-Object)) {
+        $linkPath = Join-Path $linkRoot $relativePath.Replace('/', '\')
+        if (-not (Test-Path -LiteralPath $linkPath -PathType Leaf)) {
+            $problems.Add([PSCustomObject]@{ Kind = 'missing'; Path = $relativePath })
+        } elseif ((Get-ModFileIdentity -Path $linkPath) -ne (Get-ModFileIdentity -Path $sourceMap[$relativePath])) {
+            $problems.Add([PSCustomObject]@{ Kind = 'not linked'; Path = $relativePath })
+        }
+    }
+    foreach ($linkedFile in @(Get-ChildItem -LiteralPath $linkRoot -Recurse -File -Force)) {
+        $relativePath = $linkedFile.FullName.Substring($linkRoot.Length + 1).Replace('\', '/')
+        if (-not $sourceMap.ContainsKey($relativePath)) {
+            $problems.Add([PSCustomObject]@{ Kind = 'extra'; Path = $relativePath })
+        }
+    }
+    return $problems.ToArray()
+}
+
+function Write-ModDevLinkWarnings {
+    param([Parameter(Mandatory = $true)]$Config)
+
+    if (@($Config.Members).Count -gt 0) {
+        foreach ($contentSource in @(Get-ModContentSources -Config $Config | Where-Object { $_.Name -ne $Config.PackageName })) {
+            $memberConfig = Get-ModBuildConfig -RepoDir $Config.RepoDir -ModDir $Config.ModDir -PackageName $contentSource.Name
+            $memberTarget = Get-ModLauncherTarget -LauncherFilePath (Join-Path $Config.ModDir ($memberConfig.ModFolderName + '.mod'))
+            if ($memberTarget -and $memberTarget -ieq $memberConfig.ContentRoot) {
+                Write-Info "Member '$($contentSource.Name)' ($($memberConfig.ModFolderName)) is also linked to this repository: with both enabled the game loads the shared paths once [LOAD-022]; the bundle and a member of another release were not checked."
+            }
+        }
+        return
+    }
+    if (-not $Config.PackageName) {
+        return
+    }
+    foreach ($bundleConfig in @(Get-ModBundleConfigs -Config $Config | Where-Object { @($_.Members) -contains $Config.PackageName })) {
+        $bundleTarget = Get-ModLauncherTarget -LauncherFilePath (Join-Path $Config.ModDir ($bundleConfig.ModFolderName + '.mod'))
+        if ($bundleTarget -and $bundleTarget -ieq (Get-ModDevLinkFolder -Config $bundleConfig)) {
+            Write-Info "The bundle '$($bundleConfig.PackageName)' ($($bundleConfig.ModFolderName)) is linked to this repository and holds this package: with both enabled the game loads the shared paths once [LOAD-022]; the bundle and a member of another release were not checked."
+        }
+    }
+}
+
+function Invoke-ModDevLinkCheck {
+    param([Parameter(Mandatory = $true)]$Config)
+
+    Write-Step "Checking the DevLink folder of '$($Config.PackageName)'..."
+    if (@($Config.Members).Count -eq 0) {
+        Write-Err "Package '$($Config.PackageName)' has no members, so it has no DevLink folder to check; it is linked to its own folder."
+        return 1
+    }
+    $problems = @(Get-ModDevLinkProblems -Config $Config)
+    if ($problems.Count -eq 0) {
+        Write-Ok 'Every file in the DevLink folder is linked to its member file, and none is missing or extra.'
+        return 0
+    }
+    foreach ($problem in $problems) {
+        Write-Warn "$($problem.Kind): $($problem.Path)"
+    }
+    Write-Err "$($problems.Count) problem(s): run build.ps1 -DevLink -Pack $($Config.PackageName) again to rebuild the folder. Nothing was changed."
+    return 1
+}
+
+function Invoke-ModBundleDevLink {
+    param([Parameter(Mandatory = $true)]$Config)
+
+    $linkFolder = Get-ModDevLinkFolder -Config $Config
+    $sourceMap = Get-ModContentSourceMap -Config $Config
+    if (Test-Path -LiteralPath $linkFolder) {
+        Remove-Item -LiteralPath $linkFolder -Recurse -Force
+    }
+    New-Item -ItemType Directory -Path $linkFolder -Force | Out-Null
+    $linkedCount = 0
+    $copiedCount = 0
+    foreach ($relativePath in @($sourceMap.Keys | Sort-Object)) {
+        $linkPath = Join-Path $linkFolder $relativePath.Replace('/', '\')
+        $linkParent = Split-Path -Parent $linkPath
+        if (-not (Test-Path -LiteralPath $linkParent)) {
+            New-Item -ItemType Directory -Path $linkParent -Force | Out-Null
+        }
+        try {
+            New-ModHardLink -Path $linkPath -Target $sourceMap[$relativePath]
+            $linkedCount++
+        } catch {
+            Copy-Item -LiteralPath $sourceMap[$relativePath] -Destination $linkPath -Force
+            $copiedCount++
+        }
+    }
+    Write-Ok "Linked $linkedCount file(s) into $linkFolder; copied $copiedCount"
+    if ($copiedCount -gt 0) {
+        Write-Warn "$copiedCount file(s) were copied because they could not be hard-linked: an edit to those does not show until build.ps1 -DevLink -Pack $($Config.PackageName) runs again."
+    }
+    Write-ModDevLinkWarnings -Config $Config
+    return $linkFolder
+}
+
+function Invoke-ModDevLink {
+    param(
+        [Parameter(Mandatory = $true)]$Config,
+        [switch]$CheckLinks
+    )
+
+    if ($CheckLinks) {
+        return (Invoke-ModDevLinkCheck -Config $Config)
+    }
     Write-Step 'Pointing the launcher at this repository (DevLink)...'
     if (-not (Test-Path -LiteralPath $Config.ModDir)) {
         New-Item -ItemType Directory -Path $Config.ModDir -Force | Out-Null
@@ -928,12 +1254,21 @@ function Invoke-ModDevLink {
     if (Test-Path -LiteralPath $deployedFolder) {
         Write-Warn "An old deployed copy exists at $deployedFolder. The launcher no longer loads it; delete the folder when you do not need it."
     }
-    $launcherContent = New-LauncherModContent -DescriptorPath $Config.DescriptorPath -TargetModPath $Config.ContentRoot
+    $loadedPath = $Config.ContentRoot
+    if (@($Config.Members).Count -gt 0) {
+        $loadedPath = [string](@(Invoke-ModBundleDevLink -Config $Config)[-1])
+    } else {
+        Write-ModDevLinkWarnings -Config $Config
+    }
+    $launcherContent = New-LauncherModContent -DescriptorPath $Config.DescriptorPath -TargetModPath $loadedPath
     $launcherFile = Join-Path $Config.ModDir ($Config.ModFolderName + '.mod')
     [System.IO.File]::WriteAllText($launcherFile, $launcherContent, (Get-ModUtf8NoBom))
     [System.IO.File]::WriteAllText((Join-Path $Config.RepoDir ($Config.ModFolderName + '.mod')), $launcherContent, (Get-ModUtf8NoBom))
     Write-Ok "Launcher file: $launcherFile"
-    Write-Ok "Loads: $($Config.ContentRoot)"
+    Write-Ok "Loads: $loadedPath"
+    if (@($Config.Members).Count -gt 0) {
+        Write-Info 'A git checkout, pull, stash or rebase breaks links silently: run build.ps1 -DevLink -CheckLinks -Pack <bundle> to see which, and -DevLink again to rebuild.'
+    }
     Write-Info 'The game reads the files at start: restart it to see a change.'
     return 0
 }
@@ -948,7 +1283,7 @@ function Invoke-ModDeploy {
     $launcherFile = Join-Path $Config.ModDir ($Config.ModFolderName + '.mod')
     $targetFolder = Join-Path $Config.ModDir $Config.ModFolderName
     $currentTarget = Get-ModLauncherTarget -LauncherFilePath $launcherFile
-    if ($currentTarget -and $currentTarget -ieq $Config.ContentRoot) {
+    if ($currentTarget -and ($currentTarget -ieq $Config.ContentRoot -or $currentTarget -ieq (Get-ModDevLinkFolder -Config $Config))) {
         Write-Warn "This replaces the active DevLink: the game will load the copy in $targetFolder, not this repository, until build.ps1 -DevLink runs again."
     }
 
@@ -994,7 +1329,7 @@ function Invoke-ModPackage {
             $launcherContent = New-LauncherModContent -DescriptorPath $Config.DescriptorPath -TargetModPath ('mod/' + $Config.ModFolderName)
             [System.IO.File]::WriteAllText((Join-Path $stageRoot ($Config.ModFolderName + '.mod')), $launcherContent, (Get-ModUtf8NoBom))
         }
-        New-ModZipArchive -SourceDir $stageRoot -ZipPath $zipTarget -StagedContentDir $contentDir -ContentRoot $Config.ContentRoot
+        New-ModZipArchive -SourceDir $stageRoot -ZipPath $zipTarget -StagedContentDir $contentDir -ContentRoot $Config.ContentRoot -SourceMap (Get-ModContentSourceMap -Config $Config)
         $packagedCount = @(Get-ChildItem -LiteralPath $stageRoot -Recurse -File -Force).Count
         $archiveSize = [Math]::Round((Get-Item -LiteralPath $zipTarget).Length / 1KB, 1)
         Write-Ok "Package created: $zipTarget ($packagedCount file(s), $archiveSize KB)"
@@ -1199,7 +1534,9 @@ function Invoke-ModBuildAction {
         [string]$SteamCmdPath,
         [switch]$DryRun,
         [switch]$UpdateDescription,
-        [string]$Pack
+        [string]$Pack,
+        [string]$IncludeMembers,
+        [switch]$CheckLinks
     )
 
     if ($InstallSteamCmd) {
@@ -1208,6 +1545,12 @@ function Invoke-ModBuildAction {
     }
     try {
         $selectedConfigs = @(Get-ModSelectedConfigs -Config $Config -Pack $Pack)
+        if ($IncludeMembers) {
+            if (@($selectedConfigs | Where-Object { @($_.Members).Count -gt 0 }).Count -eq 0) {
+                throw '-IncludeMembers needs -Pack naming a package that has members'
+            }
+            $selectedConfigs = @($selectedConfigs | ForEach-Object { if (@($_.Members).Count -gt 0) { Select-ModBundleMembers -Config $_ -MemberNames @($IncludeMembers) } else { $_ } })
+        }
     } catch {
         Write-Err $_.Exception.Message
         return 1
@@ -1223,34 +1566,44 @@ function Invoke-ModBuildAction {
     if ($Test) {
         return (Invoke-ModTests -Config $Config)
     }
-    if ($PublishSteam -and $selectedConfigs.Count -gt 1) {
+    $actionConfigs = if ($Pack) { $selectedConfigs } else { @($selectedConfigs | Where-Object { @($_.Members).Count -eq 0 }) }
+    if ($CheckLinks -and -not $DevLink) {
+        Write-Err '-CheckLinks goes with -DevLink and -Pack naming a bundle.'
+        return 1
+    }
+    if ($PublishSteam -and $actionConfigs.Count -gt 1) {
         Write-Err "An upload is one Workshop item: pass -Pack with one of the packages ($($Config.PackageNames -join ', '))."
         return 1
     }
-    if ($ZipOutput -and $selectedConfigs.Count -gt 1) {
+    if ($ZipOutput -and $actionConfigs.Count -gt 1) {
         Write-Err '-ZipOutput names one archive: pass -Pack to package one of the packages.'
         return 1
     }
-    $shouldValidate = $Validate -or (-not $NoValidate -and -not $Clean)
-    if ($shouldValidate -and -not (Invoke-ModFullValidation -Config $Config -ExtraValidation $ExtraValidation -PackageConfigs $selectedConfigs)) {
+    $shouldValidate = ($Validate -or (-not $NoValidate -and -not $Clean)) -and -not $CheckLinks
+    if ($shouldValidate -and -not (Invoke-ModFullValidation -Config $Config -ExtraValidation $ExtraValidation -PackageConfigs $actionConfigs)) {
         Write-Err 'Validation failed. Nothing was deployed, packaged or uploaded.'
         return 1
     }
     $worstExitCode = 0
-    foreach ($selectedConfig in $selectedConfigs) {
+    foreach ($selectedConfig in $actionConfigs) {
         if ($selectedConfig.PackageName) {
             Write-Step "Package '$($selectedConfig.PackageName)' ($($selectedConfig.ContentPrefix.TrimEnd('/')))"
         }
-        $actionOutput = if ($Clean) {
-            Invoke-ModClean -Config $selectedConfig -ZipOutput $ZipOutput
-        } elseif ($DevLink) {
-            Invoke-ModDevLink -Config $selectedConfig
-        } elseif ($Package) {
-            Invoke-ModPackage -Config $selectedConfig -ZipOutput $ZipOutput
-        } elseif ($PublishSteam) {
-            Invoke-ModPublish -Config $selectedConfig -SteamUser $SteamUser -ChangeNote $ChangeNote -SteamCmdPath $SteamCmdPath -DryRun:$DryRun -UpdateDescription:$UpdateDescription
-        } else {
-            Invoke-ModDeploy -Config $selectedConfig
+        try {
+            $actionOutput = if ($Clean) {
+                Invoke-ModClean -Config $selectedConfig -ZipOutput $ZipOutput
+            } elseif ($DevLink) {
+                Invoke-ModDevLink -Config $selectedConfig -CheckLinks:$CheckLinks
+            } elseif ($Package) {
+                Invoke-ModPackage -Config $selectedConfig -ZipOutput $ZipOutput
+            } elseif ($PublishSteam) {
+                Invoke-ModPublish -Config $selectedConfig -SteamUser $SteamUser -ChangeNote $ChangeNote -SteamCmdPath $SteamCmdPath -DryRun:$DryRun -UpdateDescription:$UpdateDescription
+            } else {
+                Invoke-ModDeploy -Config $selectedConfig
+            }
+        } catch {
+            Write-Err $_.Exception.Message
+            $actionOutput = 1
         }
         $actionExitCode = [int](@($actionOutput)[-1])
         if ($actionExitCode -ne 0 -and $worstExitCode -eq 0) {
@@ -1280,7 +1633,9 @@ function Invoke-ModBuild {
         [string]$SteamCmdPath,
         [switch]$DryRun,
         [switch]$UpdateDescription,
-        [string]$Pack
+        [string]$Pack,
+        [string]$IncludeMembers,
+        [switch]$CheckLinks
     )
 
     $buildStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
