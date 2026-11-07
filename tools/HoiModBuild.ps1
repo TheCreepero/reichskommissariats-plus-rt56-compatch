@@ -282,6 +282,269 @@ function Get-ModSharedToolFiles {
     return $sharedFiles.ToArray()
 }
 
+function Get-ModPlatformRegions {
+    param([Parameter(Mandatory = $true)][AllowEmptyString()][string]$Text)
+
+    $markerPattern = [regex]'(?m)^[ \t]*<!--[ \t]*hoi-platform:([A-Za-z0-9-]+):(begin|end)[ \t]*-->[ \t]*\r?$'
+    $regions = [System.Collections.Generic.List[PSObject]]::new()
+    $problems = [System.Collections.Generic.List[string]]::new()
+    $openRegionName = $null
+    $openContentStart = 0
+    foreach ($markerMatch in $markerPattern.Matches($Text)) {
+        $regionName = $markerMatch.Groups[1].Value
+        $lineEnd = $markerMatch.Index + $markerMatch.Length
+        if ($lineEnd -lt $Text.Length -and $Text[$lineEnd] -eq "`n") {
+            $lineEnd++
+        }
+        if ($markerMatch.Groups[2].Value -eq 'begin') {
+            if ($openRegionName) {
+                $problems.Add("region '$openRegionName' has no end marker before region '$regionName' begins")
+            }
+            $openRegionName = $regionName
+            $openContentStart = $lineEnd
+            continue
+        }
+        if ($openRegionName -cne $regionName) {
+            $problems.Add("region '$regionName' ends without its begin marker")
+            $openRegionName = $null
+            continue
+        }
+        if (@($regions | Where-Object { $_.Name -ceq $regionName }).Count -gt 0) {
+            $problems.Add("region '$regionName' is used twice")
+        }
+        $regions.Add([PSCustomObject]@{
+                Name         = $regionName
+                ContentStart = $openContentStart
+                ContentEnd   = $markerMatch.Index
+            })
+        $openRegionName = $null
+    }
+    if ($openRegionName) {
+        $problems.Add("region '$openRegionName' has no end marker")
+    }
+    return [PSCustomObject]@{ Regions = $regions.ToArray(); Problems = $problems.ToArray() }
+}
+
+function Get-ModSkillMirrorText {
+    param(
+        [Parameter(Mandatory = $true)][AllowEmptyString()][string]$SourceText,
+        [AllowEmptyString()][string]$MirrorText = ''
+    )
+
+    $sourceRegions = Get-ModPlatformRegions -Text $SourceText
+    $mirrorRegions = Get-ModPlatformRegions -Text $MirrorText
+    $problems = [System.Collections.Generic.List[string]]::new()
+    foreach ($sourceProblem in $sourceRegions.Problems) {
+        $problems.Add("Claude copy: $sourceProblem")
+    }
+    foreach ($mirrorProblem in $mirrorRegions.Problems) {
+        $problems.Add("mirror: $mirrorProblem")
+    }
+    $sourceRegionNames = @($sourceRegions.Regions | ForEach-Object { $_.Name })
+    foreach ($mirrorRegion in $mirrorRegions.Regions) {
+        if ($sourceRegionNames -cnotcontains $mirrorRegion.Name) {
+            $problems.Add("mirror: region '$($mirrorRegion.Name)' is not in the Claude copy; add it there or remove it from the mirror")
+        }
+    }
+    $seededRegionNames = [System.Collections.Generic.List[string]]::new()
+    if ($problems.Count -gt 0) {
+        return [PSCustomObject]@{ Text = $null; Problems = $problems.ToArray(); SeededRegions = $seededRegionNames.ToArray() }
+    }
+    $lineBreak = if ($SourceText.Contains("`r`n")) { "`r`n" } else { "`n" }
+    $mirrorTextBuilder = [System.Text.StringBuilder]::new()
+    $sourcePosition = 0
+    foreach ($sourceRegion in $sourceRegions.Regions) {
+        [void]$mirrorTextBuilder.Append($SourceText.Substring($sourcePosition, $sourceRegion.ContentStart - $sourcePosition))
+        $matchingMirrorRegions = @($mirrorRegions.Regions | Where-Object { $_.Name -ceq $sourceRegion.Name })
+        if ($matchingMirrorRegions.Count -gt 0) {
+            $mirrorRegionText = $MirrorText.Substring($matchingMirrorRegions[0].ContentStart, $matchingMirrorRegions[0].ContentEnd - $matchingMirrorRegions[0].ContentStart)
+            [void]$mirrorTextBuilder.Append(($mirrorRegionText -replace '\r?\n', $lineBreak))
+        } else {
+            [void]$mirrorTextBuilder.Append($SourceText.Substring($sourceRegion.ContentStart, $sourceRegion.ContentEnd - $sourceRegion.ContentStart))
+            $seededRegionNames.Add($sourceRegion.Name)
+        }
+        $sourcePosition = $sourceRegion.ContentEnd
+    }
+    [void]$mirrorTextBuilder.Append($SourceText.Substring($sourcePosition))
+    return [PSCustomObject]@{ Text = $mirrorTextBuilder.ToString(); Problems = @(); SeededRegions = $seededRegionNames.ToArray() }
+}
+
+function Get-ModSharedSkillNames {
+    $managerRoot = Get-ModManagerRoot
+    if (-not $managerRoot) {
+        return @()
+    }
+    $sharedSkillsRoot = Join-Path $managerRoot 'Skills'
+    if (-not (Test-Path -LiteralPath $sharedSkillsRoot)) {
+        return @()
+    }
+    return @(Get-ChildItem -LiteralPath $sharedSkillsRoot -Directory | ForEach-Object { $_.Name })
+}
+
+function Test-ModFileStartsWithBom {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $fileBytes = [System.IO.File]::ReadAllBytes($Path)
+    return ($fileBytes.Length -ge 3 -and $fileBytes[0] -eq 0xEF -and $fileBytes[1] -eq 0xBB -and $fileBytes[2] -eq 0xBF)
+}
+
+function Get-ModSkillMirrorStates {
+    param(
+        [Parameter(Mandatory = $true)][string]$RepoPath,
+        [AllowEmptyCollection()][string[]]$ExcludeSkillName
+    )
+
+    if (-not $PSBoundParameters.ContainsKey('ExcludeSkillName')) {
+        $ExcludeSkillName = @(Get-ModSharedSkillNames)
+    }
+    $mirrorStates = [System.Collections.Generic.List[PSObject]]::new()
+    $sourceSkillsRoot = Join-Path $RepoPath '.claude\skills'
+    if (-not (Test-Path -LiteralPath $sourceSkillsRoot)) {
+        return $mirrorStates.ToArray()
+    }
+    $RepoPath = (Resolve-Path -LiteralPath $RepoPath).Path
+    $textExtensions = @('.md', '.txt', '.ps1', '.psm1', '.py', '.json', '.yml', '.yaml')
+    foreach ($sourceSkillFolder in @(Get-ChildItem -LiteralPath $sourceSkillsRoot -Directory | Sort-Object -Property Name)) {
+        if (@($ExcludeSkillName) -contains $sourceSkillFolder.Name) {
+            continue
+        }
+        $mirrorSkillPath = Join-Path $RepoPath ".agents\skills\$($sourceSkillFolder.Name)"
+        $problems = [System.Collections.Generic.List[string]]::new()
+        $notes = [System.Collections.Generic.List[string]]::new()
+        $differingFiles = [System.Collections.Generic.List[string]]::new()
+        $mirrorWrites = [System.Collections.Generic.List[PSObject]]::new()
+        $mirrorRemovals = [System.Collections.Generic.List[string]]::new()
+        $sourceRelativePaths = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+        foreach ($sourceFile in @(Get-ChildItem -LiteralPath $sourceSkillFolder.FullName -Recurse -File | Sort-Object -Property FullName)) {
+            $relativeFilePath = $sourceFile.FullName.Substring($sourceSkillFolder.FullName.Length + 1)
+            $displayPath = $relativeFilePath.Replace('\', '/')
+            [void]$sourceRelativePaths.Add($relativeFilePath)
+            $mirrorFilePath = Join-Path $mirrorSkillPath $relativeFilePath
+            $mirrorFileExists = Test-Path -LiteralPath $mirrorFilePath
+            if ($textExtensions -contains $sourceFile.Extension.ToLowerInvariant()) {
+                $sourceText = [System.IO.File]::ReadAllText($sourceFile.FullName, [System.Text.Encoding]::UTF8)
+                $mirrorText = if ($mirrorFileExists) { [System.IO.File]::ReadAllText($mirrorFilePath, [System.Text.Encoding]::UTF8) } else { '' }
+                $mirrorTextResult = Get-ModSkillMirrorText -SourceText $sourceText -MirrorText $mirrorText
+                if ($mirrorTextResult.Problems.Count -gt 0) {
+                    foreach ($regionProblem in $mirrorTextResult.Problems) {
+                        $problems.Add("${displayPath}: $regionProblem")
+                    }
+                    continue
+                }
+                if ($mirrorFileExists -and ($mirrorTextResult.Text -replace "`r`n", "`n") -ceq ($mirrorText -replace "`r`n", "`n")) {
+                    continue
+                }
+                foreach ($seededRegionName in $mirrorTextResult.SeededRegions) {
+                    $notes.Add("${displayPath}: region '$seededRegionName' copied from the Claude copy; write the Antigravity wording into the mirror's region")
+                }
+                $mirrorWrites.Add([PSCustomObject]@{ Path = $mirrorFilePath; Text = $mirrorTextResult.Text; Bytes = $null; Bom = (Test-ModFileStartsWithBom -Path $sourceFile.FullName) })
+            } else {
+                $sourceBytes = [System.IO.File]::ReadAllBytes($sourceFile.FullName)
+                if ($mirrorFileExists -and [System.Linq.Enumerable]::SequenceEqual([byte[]]$sourceBytes, [byte[]][System.IO.File]::ReadAllBytes($mirrorFilePath))) {
+                    continue
+                }
+                $mirrorWrites.Add([PSCustomObject]@{ Path = $mirrorFilePath; Text = $null; Bytes = $sourceBytes; Bom = $false })
+            }
+            $differingFiles.Add($(if ($mirrorFileExists) { $displayPath } else { "$displayPath (missing)" }))
+        }
+        $mirrorSkillExists = Test-Path -LiteralPath $mirrorSkillPath
+        if ($mirrorSkillExists) {
+            foreach ($mirrorFile in @(Get-ChildItem -LiteralPath $mirrorSkillPath -Recurse -File | Sort-Object -Property FullName)) {
+                $relativeMirrorPath = $mirrorFile.FullName.Substring((Get-Item -LiteralPath $mirrorSkillPath).FullName.TrimEnd('\').Length + 1)
+                if (-not $sourceRelativePaths.Contains($relativeMirrorPath)) {
+                    $differingFiles.Add("$($relativeMirrorPath.Replace('\', '/')) (not in the Claude copy)")
+                    $mirrorRemovals.Add($mirrorFile.FullName)
+                }
+            }
+        }
+        $mirrorState = 'Current'
+        if ($problems.Count -gt 0) {
+            $mirrorState = 'Broken'
+        } elseif (-not $mirrorSkillExists) {
+            $mirrorState = 'Missing'
+        } elseif ($differingFiles.Count -gt 0) {
+            $mirrorState = 'Stale'
+        }
+        $mirrorStates.Add([PSCustomObject]@{
+                Name           = "skill mirror $($sourceSkillFolder.Name)"
+                Kind           = 'SkillMirror'
+                SkillName      = $sourceSkillFolder.Name
+                Source         = ".claude\skills\$($sourceSkillFolder.Name)"
+                Target         = ".agents\skills\$($sourceSkillFolder.Name)"
+                MirrorPath     = $mirrorSkillPath
+                State          = $mirrorState
+                Problems       = $problems.ToArray()
+                Notes          = $notes.ToArray()
+                DifferingFiles = $differingFiles.ToArray()
+                Writes         = $mirrorWrites.ToArray()
+                Removals       = $mirrorRemovals.ToArray()
+            })
+    }
+    return $mirrorStates.ToArray()
+}
+
+function Save-ModSkillMirror {
+    param([Parameter(Mandatory = $true)]$MirrorState)
+
+    if ($MirrorState.State -eq 'Broken') {
+        throw "$($MirrorState.Target) is not synced: $($MirrorState.Problems -join '; ')"
+    }
+    foreach ($mirrorWrite in @($MirrorState.Writes)) {
+        $mirrorParentPath = Split-Path -Parent $mirrorWrite.Path
+        if (-not (Test-Path -LiteralPath $mirrorParentPath)) {
+            New-Item -ItemType Directory -Path $mirrorParentPath -Force | Out-Null
+        }
+        if ($null -ne $mirrorWrite.Bytes) {
+            [System.IO.File]::WriteAllBytes($mirrorWrite.Path, [byte[]]$mirrorWrite.Bytes)
+        } else {
+            [System.IO.File]::WriteAllText($mirrorWrite.Path, $mirrorWrite.Text, [System.Text.UTF8Encoding]::new([bool]$mirrorWrite.Bom))
+        }
+    }
+    foreach ($mirrorRemoval in @($MirrorState.Removals)) {
+        Remove-Item -LiteralPath $mirrorRemoval -Force
+    }
+    if (Test-Path -LiteralPath $MirrorState.MirrorPath) {
+        foreach ($mirrorFolder in @(Get-ChildItem -LiteralPath $MirrorState.MirrorPath -Recurse -Directory | Sort-Object -Property { $_.FullName.Length } -Descending)) {
+            if (@(Get-ChildItem -LiteralPath $mirrorFolder.FullName -Force).Count -eq 0) {
+                Remove-Item -LiteralPath $mirrorFolder.FullName -Force
+            }
+        }
+    }
+}
+
+function Sync-ModSkillMirrors {
+    param([Parameter(Mandatory = $true)][string]$RepoPath)
+
+    $mirrorStates = @(Get-ModSkillMirrorStates -RepoPath $RepoPath)
+    if ($mirrorStates.Count -eq 0) {
+        Write-Host 'No project skills under .claude\skills.' -ForegroundColor Yellow
+        return 0
+    }
+    $exitCode = 0
+    $updatedCount = 0
+    foreach ($mirrorState in $mirrorStates) {
+        if ($mirrorState.State -eq 'Current') {
+            continue
+        }
+        $mirrorDisplayPath = $mirrorState.Target.Replace('\', '/')
+        if ($mirrorState.State -eq 'Broken') {
+            Write-Host "$mirrorDisplayPath not synced: $($mirrorState.Problems -join '; ')" -ForegroundColor Red
+            $exitCode = 1
+            continue
+        }
+        Save-ModSkillMirror -MirrorState $mirrorState
+        $updatedCount++
+        Write-Host "Updated $mirrorDisplayPath ($($mirrorState.DifferingFiles -join ', '))" -ForegroundColor Green
+        foreach ($mirrorNote in $mirrorState.Notes) {
+            Write-Host "  $mirrorNote" -ForegroundColor Yellow
+        }
+    }
+    if ($updatedCount -eq 0 -and $exitCode -eq 0) {
+        Write-Host "All $($mirrorStates.Count) skill mirror(s) under .agents\skills are current." -ForegroundColor Green
+    }
+    return $exitCode
+}
+
 function Get-ModMetadata {
     param([Parameter(Mandatory = $true)][string]$Path)
 

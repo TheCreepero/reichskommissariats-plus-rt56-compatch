@@ -932,6 +932,123 @@ Describe 'Bundles' -Tag 'Engine' {
     }
 }
 
+Describe 'Skill mirrors' -Tag 'Engine' {
+    BeforeAll {
+        function Get-ProbeMirrorState {
+            param([string]$RepoPath)
+
+            return @(Get-ModSkillMirrorStates -RepoPath $RepoPath -ExcludeSkillName @() | Where-Object { $_.SkillName -eq 'probe' })[0]
+        }
+    }
+
+    It 'creates a missing mirror byte for byte and then finds it current' {
+        $fixtureRoot = New-TestDirectory
+        Write-TestFile -Root $fixtureRoot -RelativePath '.claude\skills\probe\SKILL.md' -Text "# Probe`r`n"
+        Write-TestFile -Root $fixtureRoot -RelativePath '.claude\skills\probe\references\steps.md' -Text "Step one.`r`n" -Bom
+        New-Item -ItemType Directory -Path (Join-Path $fixtureRoot '.claude\skills\probe\assets') -Force | Out-Null
+        [System.IO.File]::WriteAllBytes((Join-Path $fixtureRoot '.claude\skills\probe\assets\icon.png'), [byte[]](137, 80, 78, 71))
+
+        $mirrorState = Get-ProbeMirrorState -RepoPath $fixtureRoot
+        $mirrorState.State | Should -Be 'Missing'
+        $mirrorState.Target | Should -Be '.agents\skills\probe'
+        $mirrorState.DifferingFiles | Should -Contain 'SKILL.md (missing)'
+        Save-ModSkillMirror -MirrorState $mirrorState
+
+        foreach ($relativeFilePath in @('SKILL.md', 'references\steps.md', 'assets\icon.png')) {
+            (Get-FileHash -LiteralPath (Join-Path $fixtureRoot ".agents\skills\probe\$relativeFilePath")).Hash | Should -Be (Get-FileHash -LiteralPath (Join-Path $fixtureRoot ".claude\skills\probe\$relativeFilePath")).Hash
+        }
+        (Get-ProbeMirrorState -RepoPath $fixtureRoot).State | Should -Be 'Current'
+    }
+
+    It 'copies the Claude text over the mirror and keeps the text of each hoi-platform region of the mirror' {
+        $fixtureRoot = New-TestDirectory
+        Write-TestFile -Root $fixtureRoot -RelativePath '.claude\skills\probe\SKILL.md' -Text "# Probe`r`n`r`nNew shared rule.`r`n<!-- hoi-platform:dispatch:begin -->`r`nDispatch through the Agent tool.`r`n<!-- hoi-platform:dispatch:end -->`r`n1. Step`r`n   <!-- hoi-platform:review:begin -->`r`n   Review with the reviewer agent.`r`n   <!-- hoi-platform:review:end -->`r`n"
+        Write-TestFile -Root $fixtureRoot -RelativePath '.agents\skills\probe\SKILL.md' -Text "# Probe`n`nOld shared rule.`n<!-- hoi-platform:dispatch:begin -->`nDispatch through invoke_subagent.`nRole: researcher.`n<!-- hoi-platform:dispatch:end -->`n1. Step`n   <!-- hoi-platform:review:begin -->`n   Review with a fresh invoke_subagent.`n   <!-- hoi-platform:review:end -->`n"
+
+        $mirrorState = Get-ProbeMirrorState -RepoPath $fixtureRoot
+        $mirrorState.State | Should -Be 'Stale'
+        $mirrorState.DifferingFiles | Should -Be @('SKILL.md')
+        Save-ModSkillMirror -MirrorState $mirrorState
+
+        [System.IO.File]::ReadAllText((Join-Path $fixtureRoot '.agents\skills\probe\SKILL.md')) | Should -BeExactly "# Probe`r`n`r`nNew shared rule.`r`n<!-- hoi-platform:dispatch:begin -->`r`nDispatch through invoke_subagent.`r`nRole: researcher.`r`n<!-- hoi-platform:dispatch:end -->`r`n1. Step`r`n   <!-- hoi-platform:review:begin -->`r`n   Review with a fresh invoke_subagent.`r`n   <!-- hoi-platform:review:end -->`r`n"
+        (Get-ProbeMirrorState -RepoPath $fixtureRoot).State | Should -Be 'Current'
+    }
+
+    It 'finds a mirror current that differs only inside its regions or in line endings' {
+        $fixtureRoot = New-TestDirectory
+        Write-TestFile -Root $fixtureRoot -RelativePath '.claude\skills\probe\SKILL.md' -Text "# Probe`r`n<!-- hoi-platform:dispatch:begin -->`r`nAgent tool.`r`n<!-- hoi-platform:dispatch:end -->`r`n"
+        Write-TestFile -Root $fixtureRoot -RelativePath '.agents\skills\probe\SKILL.md' -Text "# Probe`n<!-- hoi-platform:dispatch:begin -->`ninvoke_subagent.`n<!-- hoi-platform:dispatch:end -->`n"
+
+        (Get-ProbeMirrorState -RepoPath $fixtureRoot).State | Should -Be 'Current'
+    }
+
+    It 'fills a region the mirror lacks from the Claude copy and says so' {
+        $fixtureRoot = New-TestDirectory
+        Write-TestFile -Root $fixtureRoot -RelativePath '.claude\skills\probe\SKILL.md' -Text "# Probe`r`n<!-- hoi-platform:dispatch:begin -->`r`nAgent tool.`r`n<!-- hoi-platform:dispatch:end -->`r`n"
+        Write-TestFile -Root $fixtureRoot -RelativePath '.agents\skills\probe\SKILL.md' -Text "# Probe`r`nAgent tool.`r`n"
+
+        $mirrorState = Get-ProbeMirrorState -RepoPath $fixtureRoot
+        $mirrorState.State | Should -Be 'Stale'
+        $mirrorState.Notes | Should -Be @("SKILL.md: region 'dispatch' copied from the Claude copy; write the Antigravity wording into the mirror's region")
+        Save-ModSkillMirror -MirrorState $mirrorState
+        (Get-FileHash -LiteralPath (Join-Path $fixtureRoot '.agents\skills\probe\SKILL.md')).Hash | Should -Be (Get-FileHash -LiteralPath (Join-Path $fixtureRoot '.claude\skills\probe\SKILL.md')).Hash
+    }
+
+    It 'reports broken regions and writes nothing: <Case>' -TestCases @(
+        @{ Case = 'a region only the mirror has'; ClaudeText = "# Probe`r`n"; MirrorText = "# Probe`r`n<!-- hoi-platform:extra:begin -->`r`nx`r`n<!-- hoi-platform:extra:end -->`r`n"; Expected = "SKILL.md: mirror: region 'extra' is not in the Claude copy*" }
+        @{ Case = 'a region without its end marker'; ClaudeText = "<!-- hoi-platform:open:begin -->`r`nx`r`n"; MirrorText = "x`r`n"; Expected = "SKILL.md: Claude copy: region 'open' has no end marker" }
+        @{ Case = 'an end marker without its begin marker'; ClaudeText = "x`r`n<!-- hoi-platform:stray:end -->`r`n"; MirrorText = "x`r`n"; Expected = "SKILL.md: Claude copy: region 'stray' ends without its begin marker" }
+        @{ Case = 'a region name used twice'; ClaudeText = "<!-- hoi-platform:twin:begin -->`r`na`r`n<!-- hoi-platform:twin:end -->`r`n<!-- hoi-platform:twin:begin -->`r`nb`r`n<!-- hoi-platform:twin:end -->`r`n"; MirrorText = "x`r`n"; Expected = "SKILL.md: Claude copy: region 'twin' is used twice" }
+    ) {
+        param($Case, $ClaudeText, $MirrorText, $Expected)
+
+        $fixtureRoot = New-TestDirectory
+        Write-TestFile -Root $fixtureRoot -RelativePath '.claude\skills\probe\SKILL.md' -Text $ClaudeText
+        Write-TestFile -Root $fixtureRoot -RelativePath '.agents\skills\probe\SKILL.md' -Text $MirrorText
+
+        $mirrorState = Get-ProbeMirrorState -RepoPath $fixtureRoot
+        $mirrorState.State | Should -Be 'Broken'
+        $mirrorState.Problems[0] | Should -BeLike $Expected
+        @($mirrorState.Writes).Count | Should -Be 0
+        { Save-ModSkillMirror -MirrorState $mirrorState } | Should -Throw '*is not synced*'
+        [System.IO.File]::ReadAllText((Join-Path $fixtureRoot '.agents\skills\probe\SKILL.md')) | Should -BeExactly $MirrorText
+    }
+
+    It 'removes a mirror file the Claude copy no longer has, with its empty folder' {
+        $fixtureRoot = New-TestDirectory
+        Write-TestFile -Root $fixtureRoot -RelativePath '.claude\skills\probe\SKILL.md' -Text "# Probe`r`n"
+        Write-TestFile -Root $fixtureRoot -RelativePath '.agents\skills\probe\SKILL.md' -Text "# Probe`r`n"
+        Write-TestFile -Root $fixtureRoot -RelativePath '.agents\skills\probe\references\retired.md' -Text "old`r`n"
+
+        $mirrorState = Get-ProbeMirrorState -RepoPath $fixtureRoot
+        $mirrorState.State | Should -Be 'Stale'
+        $mirrorState.DifferingFiles | Should -Be @('references/retired.md (not in the Claude copy)')
+        Save-ModSkillMirror -MirrorState $mirrorState
+        Test-Path -LiteralPath (Join-Path $fixtureRoot '.agents\skills\probe\references') | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $fixtureRoot '.agents\skills\probe\SKILL.md') | Should -BeTrue
+    }
+
+    It 'leaves alone a mirror without a Claude copy and every skill it is told to exclude' {
+        $fixtureRoot = New-TestDirectory
+        Write-TestFile -Root $fixtureRoot -RelativePath '.claude\skills\shared-one\SKILL.md' -Text "# Shared`r`n"
+        Write-TestFile -Root $fixtureRoot -RelativePath '.agents\skills\antigravity-only\SKILL.md' -Text "# Only here`r`n"
+
+        @(Get-ModSkillMirrorStates -RepoPath $fixtureRoot -ExcludeSkillName @('shared-one')).Count | Should -Be 0
+        @(Get-ModSkillMirrorStates -RepoPath $fixtureRoot -ExcludeSkillName @()).SkillName | Should -Be @('shared-one')
+        @(Get-ModSkillMirrorStates -RepoPath (New-TestDirectory) -ExcludeSkillName @()).Count | Should -Be 0
+    }
+
+    It 'syncs every mirror of a repo with Sync-ModSkillMirrors and fails on a broken one' {
+        $fixtureRoot = New-TestDirectory
+        Write-TestFile -Root $fixtureRoot -RelativePath '.claude\skills\probe\SKILL.md' -Text "# Probe`r`n"
+        Sync-ModSkillMirrors -RepoPath $fixtureRoot 6> $null | Should -Be 0
+        Test-Path -LiteralPath (Join-Path $fixtureRoot '.agents\skills\probe\SKILL.md') | Should -BeTrue
+
+        Write-TestFile -Root $fixtureRoot -RelativePath '.claude\skills\probe\SKILL.md' -Text "<!-- hoi-platform:open:begin -->`r`n"
+        Sync-ModSkillMirrors -RepoPath $fixtureRoot 6> $null | Should -Be 1
+    }
+}
+
 Describe 'Workshop VDF' -Tag 'Engine' {
     It 'escapes quotes and backslashes and keeps the visibility of an existing item' {
         $vdfText = New-ModWorkshopVdf -ContentDir 'C:\stage\content' -PreviewPath 'C:\stage\content\thumbnail.png' -Title 'My "Mod"' -PublishedFileId '123' -ChangeNote 'Fix C:\path and "quotes"'
