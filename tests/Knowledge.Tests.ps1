@@ -1,9 +1,13 @@
 BeforeAll {
     $script:RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
     $script:AuditScript = $null
-    $treeCandidate = Join-Path $PSScriptRoot '..\..\..\Scripts\Knowledge\Test-HoiKnowledge.ps1'
-    if (Test-Path -LiteralPath $treeCandidate) {
-        $script:AuditScript = [System.IO.Path]::GetFullPath($treeCandidate)
+    $candidateFolder = [System.IO.DirectoryInfo]::new($PSScriptRoot)
+    while ($candidateFolder -and -not $script:AuditScript) {
+        $treeCandidate = Join-Path $candidateFolder.FullName 'Scripts\Knowledge\Test-HoiKnowledge.ps1'
+        if ((Test-Path -LiteralPath (Join-Path $candidateFolder.FullName 'Config\mods_registry.json')) -and (Test-Path -LiteralPath $treeCandidate)) {
+            $script:AuditScript = $treeCandidate
+        }
+        $candidateFolder = $candidateFolder.Parent
     }
     $pointerPaths = @(
         (Join-Path $HOME '.claude\skills\hoi4-modding-knowledge\manager-root.txt'),

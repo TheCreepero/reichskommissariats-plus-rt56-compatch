@@ -210,21 +210,22 @@ function Select-ModBuildParameters {
 }
 
 function Get-ModManagerRoot {
-    $relativeCandidates = @(
-        (Join-Path $PSScriptRoot '..\..\..\..'),
-        (Join-Path $PSScriptRoot '..\..')
+    param(
+        [string]$StartPath = $PSScriptRoot,
+        [string[]]$PointerPaths = @(
+            (Join-Path $HOME '.claude\skills\hoi4-modding-knowledge\manager-root.txt'),
+            (Join-Path $HOME '.gemini\config\skills\hoi4-modding-knowledge\manager-root.txt')
+        )
     )
-    foreach ($relativeCandidate in $relativeCandidates) {
-        $candidateRoot = [System.IO.Path]::GetFullPath($relativeCandidate).TrimEnd('\')
-        if (Test-Path -LiteralPath (Join-Path $candidateRoot 'Config\mods_registry.json')) {
-            return $candidateRoot
+
+    $candidateFolder = [System.IO.DirectoryInfo]::new($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($StartPath))
+    while ($candidateFolder) {
+        if (Test-Path -LiteralPath (Join-Path $candidateFolder.FullName 'Config\mods_registry.json')) {
+            return $candidateFolder.FullName.TrimEnd('\')
         }
+        $candidateFolder = $candidateFolder.Parent
     }
-    $pointerPaths = @(
-        (Join-Path $HOME '.claude\skills\hoi4-modding-knowledge\manager-root.txt'),
-        (Join-Path $HOME '.gemini\config\skills\hoi4-modding-knowledge\manager-root.txt')
-    )
-    foreach ($pointerPath in $pointerPaths) {
+    foreach ($pointerPath in $PointerPaths) {
         if (-not (Test-Path -LiteralPath $pointerPath)) {
             continue
         }

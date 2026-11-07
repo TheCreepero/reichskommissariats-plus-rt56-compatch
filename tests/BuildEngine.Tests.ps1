@@ -211,6 +211,39 @@ Describe 'Parameters of build.ps1' -Tag 'Engine' {
     }
 }
 
+Describe 'Finding the Modding Manager' -Tag 'Engine' {
+    BeforeAll {
+        $script:FixtureManagerRoot = Join-Path (New-TestDirectory) 'Fixture Manager'
+        Write-TestFile -Root $script:FixtureManagerRoot -RelativePath 'Config\mods_registry.json' -Text '[]'
+        Write-TestFile -Root $script:FixtureManagerRoot -RelativePath 'mods\fixture-mod\tools\HoiModBuild.ps1' -Text ''
+        Write-TestFile -Root $script:FixtureManagerRoot -RelativePath 'scratch\worktrees\a1\fixture-mod\tools\HoiModBuild.ps1' -Text ''
+    }
+
+    It 'climbs from the tools folder of a mod under mods' {
+        Get-ModManagerRoot -StartPath (Join-Path $script:FixtureManagerRoot 'mods\fixture-mod\tools') -PointerPaths @() | Should -Be $script:FixtureManagerRoot
+    }
+
+    It 'climbs from the tools folder of a worktree under scratch\worktrees' {
+        Get-ModManagerRoot -StartPath (Join-Path $script:FixtureManagerRoot 'scratch\worktrees\a1\fixture-mod\tools') -PointerPaths @() | Should -Be $script:FixtureManagerRoot
+    }
+
+    It 'prefers the tree it climbs from over a pointer file that names another Manager' {
+        $otherManagerRoot = Join-Path (New-TestDirectory) 'Other Manager'
+        Write-TestFile -Root $otherManagerRoot -RelativePath 'Config\mods_registry.json' -Text '[]'
+        $pointerPath = Join-Path (New-TestDirectory) 'manager-root.txt'
+        [System.IO.File]::WriteAllText($pointerPath, $otherManagerRoot)
+        Get-ModManagerRoot -StartPath (Join-Path $script:FixtureManagerRoot 'scratch\worktrees\a1\fixture-mod\tools') -PointerPaths @($pointerPath) | Should -Be $script:FixtureManagerRoot
+    }
+
+    It 'falls back to the pointer file outside the tree, and to nothing without one' {
+        $outsideFolder = New-TestDirectory
+        $pointerPath = Join-Path $outsideFolder 'manager-root.txt'
+        [System.IO.File]::WriteAllText($pointerPath, $script:FixtureManagerRoot + "`r`n")
+        Get-ModManagerRoot -StartPath $outsideFolder -PointerPaths @($pointerPath) | Should -Be $script:FixtureManagerRoot
+        Get-ModManagerRoot -StartPath $outsideFolder -PointerPaths @((Join-Path $outsideFolder 'missing.txt')) | Should -BeNullOrEmpty
+    }
+}
+
 Describe 'Structure check of script files' -Tag 'Engine' {
     It 'accepts balanced braces, a # inside a quoted name and an escaped quote' {
         $problems = Get-ClausewitzSyntaxProblems -Text "FIX = {`n    name = `"Squadron #1`"`n    desc = `"say \`"hi\`"`"`n    # a comment with { and `"`n}`n"
